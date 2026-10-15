@@ -1,0 +1,98 @@
+{
+  "name": "@makerkit/loop",
+  "author": {
+    "name": "Makerkit",
+    "email": "info@makerkit.dev",
+    "url": "https://makerkit.dev"
+  },
+  "bin": {
+    "loop": "bin/loop.mjs"
+  },
+  "files": [
+    "bin",
+    ".output"
+  ],
+  "type": "module",
+  "imports": {
+    "#/*": "./src/*"
+  },
+  "scripts": {
+    "dev": "vite dev",
+    "generate-routes": "tsr generate",
+    "build": "vite build",
+    "preview": "vite preview",
+    "lint": "oxlint",
+    "lint:fix": "oxlint --fix",
+    "format": "oxfmt",
+    "format:check": "oxfmt --check",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "start": "node bin/loop.mjs",
+    "prepublishOnly": "pnpm build"
+  },
+  "dependencies": {
+    "@base-ui/react": "^1.9.0",
+    "@faker-js/faker": "^10.3.0",
+    "@fontsource-variable/inter": "^5.3.0",
+    "@lexical/code-core": "0.52.0",
+    "@lexical/history": "0.52.0",
+    "@lexical/link": "0.52.0",
+    "@lexical/list": "0.52.0",
+    "@lexical/markdown": "0.52.0",
+    "@lexical/react": "0.52.0",
+    "@lexical/rich-text": "0.52.0",
+    "@lexical/utils": "0.52.0",
+    "@makerkit/prd": "link:../makerkit/packages/prd/dist",
+    "@shadcn/react": "^0.3.1",
+    "@tailwindcss/vite": "^4.1.18",
+    "@tanstack/match-sorter-utils": "9.2.6",
+    "@tanstack/react-devtools": "0.10.13",
+    "@tanstack/react-router": "1.170.44",
+    "@tanstack/react-router-devtools": "1.167.2",
+    "@tanstack/react-start": "1.169.1",
+    "@tanstack/react-table": "9.3.1",
+    "class-variance-authority": "^0.7.1",
+    "cmdk": "^1.1.1",
+    "cn": "^0.4.0",
+    "date-fns": "^4.4.0",
+    "embla-carousel-react": "^8.6.0",
+    "input-otp": "^1.5.0",
+    "lexical": "0.52.0",
+    "lucide-react": "^1.57.0",
+    "nitro": "3.0.260903-beta",
+    "react": "^19.2.0",
+    "react-day-picker": "^10.0.2",
+    "react-dom": "^19.2.0",
+    "react-markdown": "^10.1.0",
+    "react-resizable-panels": "^4.14.5",
+    "recharts": "3.10.1",
+    "remark-gfm": "^4.0.1",
+    "tailwindcss": "^4.1.18",
+    "tw-animate-css": "^1.3.6",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@lexical/headless": "0.52.0",
+    "@tailwindcss/typography": "^0.5.16",
+    "@tanstack/devtools-vite": "0.8.5",
+    "@tanstack/router-cli": "^1.132.0",
+    "@types/node": "^26.6.5",
+    "@types/react": "^19.2.0",
+    "@types/react-dom": "^19.2.0",
+    "@vitejs/plugin-react": "^6.0.1",
+    "oxfmt": "^0.73.0",
+    "oxlint": "^1.88.0",
+    "typescript": "^7.0.2",
+    "vite": "^8.0.0",
+    "vitest": "^5.0.4"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "esbuild",
+      "lightningcss"
+    ]
+  }
+}

@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "prd": {
+      "command": "node",
+      "args": ["../makerkit/packages/prd-mcp/dist/bin.mjs"]
+    }
+  }
+}
