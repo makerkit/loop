@@ -1,6 +1,7 @@
 {
   "name": "@makerkit/loop",
   "version": "0.0.0",
+  "private": false,
   "author": {
     "name": "Makerkit",
     "email": "info@makerkit.dev",
@@ -16,6 +17,9 @@
   "type": "module",
   "imports": {
     "#/*": "./src/*"
+  },
+  "publishConfig": {
+    "access": "public"
   },
   "scripts": {
     "dev": "vite dev",

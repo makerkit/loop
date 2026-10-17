@@ -5,7 +5,13 @@ A local, document-first workspace for PRDs (product requirements documents) that
 You plan and build by talking to your own agent. Loop is where you read the plan, adjust it, follow progress and approve finished stories.
 
 ```bash
-npx @makerkit/loop
+npx @makerkit/loop@latest
+```
+
+If you use `pnpm`, run:
+
+```bash
+pnpx @makerkit/loop@latest
 ```
 
 Run it inside your project. Loop is free, MIT licensed and fully local: no account, no hosted service, and no AI of its own.
