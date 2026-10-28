@@ -42,8 +42,8 @@ importers:
         specifier: 0.52.0
         version: 0.52.0(typescript@7.0.2)
       '@makerkit/prd':
-        specifier: link:../makerkit/packages/prd/dist
-        version: link:../makerkit/packages/prd/dist
+        specifier: 0.0.4
+        version: 0.0.4
       '@shadcn/react':
         specifier: ^0.3.1
         version: 0.3.1(@types/react@19.3.0)(react@19.3.1)
@@ -519,6 +519,22 @@ packages:
       yjs: '>=13.5.37'
     peerDependenciesMeta:
       typescript:
+        optional: true
+
+  '@makerkit/prd@0.0.4':
+    resolution: {integrity: sha512-xZf/mlJvBGuF2PfJEt2XtRfy9dy/MRjIxo6Y5s/tx17G00xUIdcsQ/atnORain+40225aNMWhhcoQi2X6fnOhw==}
+    peerDependencies:
+      '@modelcontextprotocol/sdk': ^1.32.0
+    peerDependenciesMeta:
+      '@modelcontextprotocol/sdk':
+        optional: true
+
+  '@makerkit/repo-checks@0.0.2':
+    resolution: {integrity: sha512-nKI9+cWv36PHBzMixDrK6PQu171K4JtUb54rLs72bIGJpsArPUA8Pc/3h+bE5c9yAPA4I3DPA8o7WTraNXN+jg==}
+    peerDependencies:
+      '@modelcontextprotocol/sdk': ^1.32.0
+    peerDependenciesMeta:
+      '@modelcontextprotocol/sdk':
         optional: true
 
   '@napi-rs/wasm-runtime@1.2.5':
@@ -3614,6 +3630,15 @@ snapshots:
       yjs: 13.6.33
     optionalDependencies:
       typescript: 7.0.2
+
+  '@makerkit/prd@0.0.4':
+    dependencies:
+      '@makerkit/repo-checks': 0.0.2
+      zod: 4.6.7
+
+  '@makerkit/repo-checks@0.0.2':
+    dependencies:
+      zod: 4.6.7
 
   '@napi-rs/wasm-runtime@1.2.5(@emnapi/core@1.11.3)(@emnapi/runtime@1.11.3)':
     dependencies:

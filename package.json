@@ -47,7 +47,7 @@
     "@lexical/react": "0.52.0",
     "@lexical/rich-text": "0.52.0",
     "@lexical/utils": "0.52.0",
-    "@makerkit/prd": "link:../makerkit/packages/prd/dist",
+    "@makerkit/prd": "0.0.4",
     "@shadcn/react": "^0.3.1",
     "@tailwindcss/vite": "^4.1.18",
     "@tanstack/match-sorter-utils": "9.2.6",

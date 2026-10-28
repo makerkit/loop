@@ -1,3 +1,5 @@
 allowBuilds:
   esbuild: true
   lightningcss: true
+minimumReleaseAgeExclude:
+  - '@makerkit/prd@0.0.4'
