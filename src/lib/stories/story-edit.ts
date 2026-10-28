@@ -1,9 +1,37 @@
-import type { StoryComplexity, StoryPriority, StructuredPRD, UserStory } from "@makerkit/prd";
+import type {
+  CriterionProof,
+  ProofKind,
+  StoryComplexity,
+  StoryPriority,
+  StructuredPRD,
+  UserStory,
+} from "@makerkit/prd";
 
 /**
  * The story editor's form values, and the update_user_story changes they
  * make. Pure, shared by the editor and its tests.
  */
+
+/** A criterion's proof as the editor holds it; text fields, one rubric point per line. */
+export interface ProofForm {
+  kind: ProofKind | "";
+  seam: string;
+  reason: string;
+  fallback: string;
+  rubric: string;
+}
+
+export const EMPTY_PROOF: ProofForm = { kind: "", seam: "", reason: "", fallback: "", rubric: "" };
+
+/** Which fields each kind of proof uses. */
+export const PROOF_FIELDS: Record<ProofKind, Array<Exclude<keyof ProofForm, "kind">>> = {
+  unit: ["seam"],
+  integration: ["seam"],
+  e2e: ["seam", "reason"],
+  judge: ["rubric"],
+  manual: ["reason", "fallback"],
+  "post-deploy": ["reason", "fallback"],
+};
 
 export interface StoryForm {
   title: string;
@@ -12,6 +40,8 @@ export interface StoryForm {
   benefit: string;
   /** One item per line, as the list editor produces. */
   acceptanceCriteria: string;
+  /** Keyed by criterion text: a proof belongs to the criterion as written. */
+  proofs: Record<string, ProofForm>;
   testSeams: string;
   designNotes: string;
   securityNotes: string;
@@ -27,6 +57,7 @@ export interface StoryChanges {
   action?: string;
   benefit?: string;
   acceptanceCriteria?: string[];
+  proofs?: CriterionProof[];
   testSeams?: string[];
   designNotes?: string[];
   securityNotes?: string[];
@@ -61,6 +92,18 @@ export function readStoryForm(story: UserStory, prd: StructuredPRD): StoryForm {
     title: story.title,
     ...parts,
     acceptanceCriteria: lines(story.acceptanceCriteria),
+    proofs: Object.fromEntries(
+      (story.proofs ?? []).map((proof) => [
+        proof.criterion.trim(),
+        {
+          kind: proof.kind,
+          seam: proof.seam ?? "",
+          reason: proof.reason ?? "",
+          fallback: proof.fallback ?? "",
+          rubric: lines(proof.rubric),
+        },
+      ]),
+    ),
     testSeams: lines(story.testSeams),
     designNotes: lines(story.designNotes),
     securityNotes: lines(story.securityNotes),
@@ -75,6 +118,37 @@ export interface StoryFormErrors {
   title?: string;
   userStory?: string;
   acceptanceCriteria?: string;
+  proofs?: string;
+}
+
+/** The criteria as the form has them, in order. */
+export function formCriteria(form: StoryForm) {
+  return items(form.acceptanceCriteria);
+}
+
+/** The proofs to save: one per current criterion that has a kind, with only the fields its kind uses. */
+export function proofList(form: StoryForm): CriterionProof[] {
+  return formCriteria(form).flatMap((criterion) => {
+    const proof = form.proofs[criterion];
+
+    if (!proof?.kind) return [];
+
+    const fields = PROOF_FIELDS[proof.kind];
+    const text = (key: "seam" | "reason" | "fallback") =>
+      fields.includes(key) && proof[key].trim() ? { [key]: proof[key].trim() } : {};
+    const rubric = fields.includes("rubric") ? items(proof.rubric) : [];
+
+    return [
+      {
+        criterion,
+        kind: proof.kind,
+        ...text("seam"),
+        ...text("reason"),
+        ...text("fallback"),
+        ...(rubric.length > 0 ? { rubric } : {}),
+      },
+    ];
+  });
 }
 
 /** Checks done before saving; PrdService checks dependencies (cycles, unknown stories). */
@@ -92,6 +166,16 @@ export function validateStoryForm(form: StoryForm): StoryFormErrors {
 
   if (items(form.acceptanceCriteria).length === 0) {
     errors.acceptanceCriteria = "Add at least one acceptance criterion.";
+  }
+
+  for (const proof of proofList(form)) {
+    if ((proof.kind === "manual" || proof.kind === "post-deploy") && !proof.reason) {
+      errors.proofs ??= `Say why no test can prove "${proof.criterion}".`;
+    }
+
+    if (proof.kind === "judge" && !proof.rubric?.length) {
+      errors.proofs ??= `Add a rubric the review agent scores "${proof.criterion}" against.`;
+    }
   }
 
   return errors;
@@ -123,6 +207,10 @@ export function storyChanges(original: StoryForm, form: StoryForm): StoryChanges
 
   if (!same(items(form.acceptanceCriteria), items(original.acceptanceCriteria))) {
     changes.acceptanceCriteria = items(form.acceptanceCriteria);
+  }
+
+  if (JSON.stringify(proofList(form)) !== JSON.stringify(proofList(original))) {
+    changes.proofs = proofList(form);
   }
 
   if (!same(items(form.testSeams), items(original.testSeams))) {

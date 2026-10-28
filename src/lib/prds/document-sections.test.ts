@@ -45,8 +45,12 @@ describe("getDocumentFlags", () => {
     ]);
     expect(flags.stories.US002).toEqual([
       { label: "Needs more detailed acceptance criteria", severity: "recommended" },
+      { label: "Doesn't say how each criterion is proven", severity: "recommended" },
     ]);
-    expect(flags.stories.US003).toEqual([{ label: "Blocked", severity: "recommended" }]);
+    expect(flags.stories.US003).toEqual([
+      { label: "Doesn't say how each criterion is proven", severity: "recommended" },
+      { label: "Blocked", severity: "recommended" },
+    ]);
   });
 
   it("does not repeat story-level items under the section heading", () => {

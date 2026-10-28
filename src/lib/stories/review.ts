@@ -23,7 +23,13 @@ export interface ReviewInfo {
 }
 
 export type ReviewResult =
-  | { status: "approved"; commit: { sha: string } | null; commitError?: string }
+  | {
+      status: "approved";
+      commit: { sha: string } | null;
+      commitError?: string;
+      /** Decisions recorded from the deviations the user ticked. */
+      decisions?: string[];
+    }
   | { status: "sent-back" }
   | { status: "moved" }
   | { status: "reopened" }
@@ -35,6 +41,11 @@ export type ReviewResult =
 /** All deviations recorded across the story's log, oldest first. */
 export function collectDeviations(log: StoryLogEntry[] | undefined) {
   return (log ?? []).flatMap((entry) => entry.deviations ?? []);
+}
+
+/** The instruction for the review agent, which scores judge proofs. */
+export function reviewInstruction(filename: string, storyId: string) {
+  return `Review story ${storyId} from ${filename} with the review_story prompt`;
 }
 
 export function commitMessage(story: Pick<UserStory, "id" | "title">) {
@@ -134,6 +145,8 @@ export function createReviewService(deps: ReviewDeps) {
       filename: string;
       storyId: string;
       paths: string[];
+      /** Deviations from the story log to record as decisions. */
+      recordDeviations?: string[];
       expectedRevision: number;
     }): Promise<ReviewResult> {
       const story = await loadStory(input.filename, input.storyId);
@@ -149,13 +162,18 @@ export function createReviewService(deps: ReviewDeps) {
         return { status: "refused", message: git.blockers.join(" ") };
       }
 
+      let decisions: string[];
+
       try {
-        await deps.prd.updateStoryStatus({
+        const result = await deps.prd.updateStoryStatus({
           filename: input.filename,
           storyId: input.storyId,
           status: "completed",
+          ...(input.recordDeviations?.length ? { recordDeviations: input.recordDeviations } : {}),
           expectedRevision: input.expectedRevision,
         });
+
+        decisions = result.recorded_decisions;
       } catch (error) {
         if (isConflict(error)) {
           return { status: "conflict" };
@@ -168,18 +186,20 @@ export function createReviewService(deps: ReviewDeps) {
       }
 
       if (!git.isRepo) {
-        return { status: "approved", commit: null };
+        return { status: "approved", commit: null, decisions };
       }
 
       try {
         return {
           status: "approved",
           commit: await commit(input.filename, story, input.paths),
+          decisions,
         };
       } catch (error) {
         return {
           status: "approved",
           commit: null,
+          decisions,
           commitError: clean(error instanceof Error ? error.message : "The commit failed."),
         };
       }

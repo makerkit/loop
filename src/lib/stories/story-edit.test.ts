@@ -1,7 +1,13 @@
 import { normalizePrd, splitUserStory as packageSplit } from "@makerkit/prd";
 import { describe, expect, it } from "vitest";
 
-import { readStoryForm, splitUserStory, storyChanges, validateStoryForm } from "./story-edit";
+import {
+  EMPTY_PROOF,
+  readStoryForm,
+  splitUserStory,
+  storyChanges,
+  validateStoryForm,
+} from "./story-edit";
 
 const prd = normalizePrd(
   {
@@ -18,6 +24,7 @@ const prd = normalizePrd(
         dependencies: [],
         testSeams: ["saveNote"],
         securityNotes: ["Only the owner can save"],
+        proofs: [{ criterion: "Saves", kind: "unit", seam: "saveNote" }],
       },
     ],
     customPhases: [
@@ -43,6 +50,7 @@ describe("story form", () => {
       action: "save notes",
       benefit: "I keep my ideas",
       acceptanceCriteria: "Saves\nWorks offline",
+      proofs: { Saves: { kind: "unit", seam: "saveNote", reason: "", fallback: "", rubric: "" } },
       testSeams: "saveNote",
       designNotes: "",
       securityNotes: "Only the owner can save",
@@ -116,5 +124,57 @@ describe("story form", () => {
     ]) {
       expect(splitUserStory(sentence)).toEqual(packageSplit(sentence));
     }
+  });
+});
+
+describe("proofs", () => {
+  const original = readStoryForm(story, prd);
+
+  it("does not send proofs that did not change", () => {
+    expect(storyChanges(original, { ...original })).toEqual({});
+  });
+
+  it("sends the whole list, with only the fields each kind uses", () => {
+    const form = {
+      ...original,
+      proofs: {
+        ...original.proofs,
+        "Works offline": {
+          ...EMPTY_PROOF,
+          kind: "manual" as const,
+          seam: "left over from a test kind",
+          reason: " Needs a real browser offline ",
+          fallback: "The queue replays",
+        },
+      },
+    };
+
+    expect(storyChanges(original, form).proofs).toEqual([
+      { criterion: "Saves", kind: "unit", seam: "saveNote" },
+      {
+        criterion: "Works offline",
+        kind: "manual",
+        reason: "Needs a real browser offline",
+        fallback: "The queue replays",
+      },
+    ]);
+  });
+
+  it("drops the proof of a reworded criterion", () => {
+    expect(
+      storyChanges(original, { ...original, acceptanceCriteria: "Saves at once\nWorks offline" }),
+    ).toMatchObject({ acceptanceCriteria: ["Saves at once", "Works offline"], proofs: [] });
+  });
+
+  it("asks for a reason by hand and a rubric for the review agent", () => {
+    const withProof = (proof: Partial<typeof EMPTY_PROOF>) =>
+      validateStoryForm({
+        ...original,
+        proofs: { "Works offline": { ...EMPTY_PROOF, ...proof } },
+      }).proofs;
+
+    expect(withProof({ kind: "post-deploy" })).toMatch(/Say why no test can prove/);
+    expect(withProof({ kind: "judge", rubric: "\n" })).toMatch(/Add a rubric/);
+    expect(withProof({ kind: "judge", rubric: "Clear copy" })).toBeUndefined();
   });
 });

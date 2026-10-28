@@ -4,6 +4,8 @@ import { useServerFn } from "@tanstack/react-start";
 import { CircleAlertIcon, CircleCheckIcon, GitCommitIcon, TriangleAlertIcon } from "lucide-react";
 import { useEffect, useId, useState } from "react";
 
+import { CopyInstruction } from "#/components/copy-instruction";
+import { Markdown } from "#/components/markdown";
 import { usePrdEdit } from "#/components/prds/prd-edit-context";
 import { BulletList } from "#/components/prds/document-parts";
 import { Alert, AlertDescription, AlertTitle } from "#/components/ui/alert";
@@ -12,7 +14,8 @@ import { Checkbox } from "#/components/ui/checkbox";
 import { Textarea } from "#/components/ui/textarea";
 import type { GitChangedFile } from "#/lib/git/git-status";
 import type { ReviewInfo, ReviewResult } from "#/lib/stories/review";
-import { collectDeviations, commitMessage } from "#/lib/stories/review";
+import { reviewChecks } from "#/lib/stories/proofs";
+import { collectDeviations, commitMessage, reviewInstruction } from "#/lib/stories/review";
 import {
   approveStory,
   commitStoryAgain,
@@ -28,16 +31,21 @@ const CONFLICT_MESSAGE =
   "The PRD changed elsewhere, so nothing was done. The latest version is loaded; review it and try again.";
 
 /**
- * Approve or send back a story in review. Shows deviations first, then the
- * changed files to commit, the project checks and the commit message.
+ * Approve or send back a story in review. Shows deviations first (the ticked
+ * ones become decisions in the PRD on approval), then what the user checks
+ * themselves, the changed files to commit, the project checks and the commit
+ * message.
  */
 export function StoryReview({
   story,
   startSendingBack = false,
+  onEditStory,
 }: {
   story: UserStory;
   /** Open with the send back form shown (a drop from Review onto In progress). */
   startSendingBack?: boolean;
+  /** Opens the story editor: the fix for a plan that was wrong is the plan. */
+  onEditStory?: () => void;
 }) {
   const { filename, prd } = usePrdEdit();
   const router = useRouter();
@@ -85,7 +93,10 @@ export function StoryReview({
     };
   }, [filename, loadInfo]);
 
-  const deviations = collectDeviations(story.log);
+  const deviations = [...new Set(collectDeviations(story.log))];
+  // Deviations start ticked, including ones logged while this is open: the PRD should say what was built
+  const [skipped, setSkipped] = useState<Set<string>>(new Set());
+  const checksForReview = reviewChecks(story);
   const blocked = info?.isRepo === true && info.blockers.length > 0;
 
   async function handle(result: ReviewResult, paths: string[]) {
@@ -103,9 +114,15 @@ export function StoryReview({
       });
     } else if (result.status === "approved" || result.status === "committed") {
       setCommitFailed(null);
+      const decisions = result.status === "approved" ? (result.decisions ?? []) : [];
+      const recordedText =
+        decisions.length > 0 ? ` Recorded as decisions: ${decisions.join(", ")}.` : "";
+
       setMessage({
         tone: "success",
-        text: result.commit ? `Approved and committed (${result.commit.sha}).` : "Approved.",
+        text:
+          (result.commit ? `Approved and committed (${result.commit.sha}).` : "Approved.") +
+          recordedText,
       });
     }
   }
@@ -164,14 +181,89 @@ export function StoryReview({
                 ? "The agent recorded 1 deviation"
                 : `The agent recorded ${deviations.length} deviations`}
             </AlertTitle>
-            <AlertDescription>
-              <BulletList items={deviations} className="text-sm leading-6" />
+            <AlertDescription className="grid gap-2">
+              <p>Ticked deviations are added to the PRD's decisions when you approve.</p>
+              <ul className="grid gap-1.5">
+                {deviations.map((deviation) => (
+                  <DeviationRow
+                    key={deviation}
+                    deviation={deviation}
+                    checked={!skipped.has(deviation)}
+                    onChange={(checked) =>
+                      setSkipped((current) => {
+                        const next = new Set(current);
+
+                        if (checked) next.delete(deviation);
+                        else next.add(deviation);
+
+                        return next;
+                      })
+                    }
+                  />
+                ))}
+              </ul>
+              {onEditStory ? (
+                <p className="flex flex-wrap items-center gap-x-2">
+                  If one changes what the story must do, update its criteria first.
+                  <Button variant="link" size="xs" className="h-auto px-0" onClick={onEditStory}>
+                    Edit story
+                  </Button>
+                </p>
+              ) : null}
             </AlertDescription>
           </Alert>
         ) : (
           <p className="text-sm text-muted-foreground">No deviations recorded.</p>
         )}
       </ReviewGroup>
+
+      {checksForReview.byHand.length > 0 ? (
+        <ReviewGroup title="For you to check">
+          <p className="text-xs text-muted-foreground">
+            No test proves these. Check them yourself before approving.
+          </p>
+          <ul className="grid gap-2 text-sm">
+            {checksForReview.byHand.map(({ criterion, proof, label }) => (
+              <li
+                key={criterion}
+                className="grid gap-0.5 rounded-lg border bg-background px-3 py-2"
+              >
+                <Markdown text={criterion} inline className="font-medium" />
+                <span className="text-xs text-muted-foreground">
+                  {label}
+                  {proof?.reason ? (
+                    <>
+                      : <Markdown text={proof.reason} inline />
+                    </>
+                  ) : null}
+                </span>
+                {proof?.fallback ? (
+                  <span className="text-xs text-muted-foreground">
+                    Tested instead: <Markdown text={proof.fallback} inline />
+                  </span>
+                ) : null}
+              </li>
+            ))}
+          </ul>
+        </ReviewGroup>
+      ) : null}
+
+      {checksForReview.judged.length > 0 ? (
+        <ReviewGroup title="Scored by the review agent">
+          <p className="text-xs text-muted-foreground">
+            The review agent scores these against their rubrics. Run it before approving.
+          </p>
+          <ul className="grid gap-2 text-sm">
+            {checksForReview.judged.map(({ criterion, proof }) => (
+              <li key={criterion} className="grid gap-1 rounded-lg border bg-background px-3 py-2">
+                <Markdown text={criterion} inline className="font-medium" />
+                <BulletList items={proof?.rubric ?? []} className="text-xs leading-5" />
+              </li>
+            ))}
+          </ul>
+          <CopyInstruction instruction={reviewInstruction(filename, story.id)} />
+        </ReviewGroup>
+      ) : null}
 
       <ReviewGroup title="Files to commit">
         {infoError ? (
@@ -267,6 +359,14 @@ export function StoryReview({
           <label htmlFor={feedbackId} className="text-sm font-medium">
             What should the agent change?
           </label>
+          {onEditStory ? (
+            <p className="flex flex-wrap items-center gap-x-2 text-xs text-muted-foreground">
+              Were the criteria wrong? Fix the story first, so the agent builds to the right plan.
+              <Button variant="link" size="xs" className="h-auto px-0" onClick={onEditStory}>
+                Edit story
+              </Button>
+            </p>
+          ) : null}
           <Textarea
             id={feedbackId}
             autoFocus
@@ -300,6 +400,7 @@ export function StoryReview({
                       filename,
                       storyId: story.id,
                       paths,
+                      recordDeviations: deviations.filter((deviation) => !skipped.has(deviation)),
                       expectedRevision: prd.metadata.revision ?? 0,
                     },
                   }),
@@ -318,6 +419,32 @@ export function StoryReview({
         </div>
       )}
     </section>
+  );
+}
+
+function DeviationRow({
+  deviation,
+  checked,
+  onChange,
+}: {
+  deviation: string;
+  checked: boolean;
+  onChange: (checked: boolean) => void;
+}) {
+  const id = useId();
+
+  return (
+    <li className="flex items-start gap-2">
+      <Checkbox
+        id={id}
+        checked={checked}
+        onCheckedChange={(value) => onChange(value === true)}
+        className="mt-1"
+      />
+      <label htmlFor={id} className="text-sm leading-6">
+        <Markdown text={deviation} inline />
+      </label>
+    </li>
   );
 }
 

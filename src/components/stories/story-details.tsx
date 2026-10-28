@@ -12,6 +12,7 @@ import { Alert, AlertDescription, AlertTitle } from "#/components/ui/alert";
 import { Button } from "#/components/ui/button";
 import { SheetDescription, SheetHeader, SheetTitle } from "#/components/ui/sheet";
 import type { StoryStep } from "#/lib/stories/moves";
+import { criteriaWithProofs } from "#/lib/stories/proofs";
 
 import { MoveStoryMenu } from "./move-story-menu";
 import { ReopenStory } from "./reopen-story";
@@ -84,7 +85,11 @@ export function StoryDetails({
           <StoryEditor story={story} onDone={() => setEditing(false)} />
         ) : (
           <>
-            <StoryReview story={story} startSendingBack={startStep === "send-back"} />
+            <StoryReview
+              story={story}
+              startSendingBack={startStep === "send-back"}
+              onEditStory={() => setEditing(true)}
+            />
             {story.status === "completed" ? (
               <ReopenStory story={story} startOpen={startStep === "reopen"} />
             ) : null}
@@ -122,7 +127,7 @@ export function StoryDetails({
 
             <DetailSection title="Acceptance criteria">
               {story.acceptanceCriteria.length > 0 ? (
-                <BulletList items={story.acceptanceCriteria} />
+                <CriteriaList story={story} />
               ) : (
                 <Empty>No acceptance criteria yet.</Empty>
               )}
@@ -236,6 +241,47 @@ export function StoryDetails({
         )}
       </div>
     </PrdFileProvider>
+  );
+}
+
+/** The acceptance criteria, each with how it is proven when the story says. */
+function CriteriaList({ story }: { story: UserStory }) {
+  return (
+    <ul className="grid list-disc gap-2 pl-5 text-[15px] leading-7 marker:text-muted-foreground">
+      {criteriaWithProofs(story).map(({ criterion, proof, label, byHand }, index) => (
+        <li key={index}>
+          <Markdown text={criterion} inline />
+          {proof ? (
+            <span className="grid text-xs leading-5 text-muted-foreground">
+              <span>
+                <span className={byHand ? "font-medium text-foreground" : undefined}>{label}</span>
+                {proof.seam ? (
+                  <>
+                    {" "}
+                    · <code>{proof.seam}</code>
+                  </>
+                ) : null}
+                {proof.reason ? (
+                  <>
+                    : <Markdown text={proof.reason} inline />
+                  </>
+                ) : null}
+              </span>
+              {proof.fallback ? (
+                <span>
+                  Tested instead: <Markdown text={proof.fallback} inline />
+                </span>
+              ) : null}
+              {proof.rubric?.length ? (
+                <span>
+                  Rubric: <Markdown text={proof.rubric.join("; ")} inline />
+                </span>
+              ) : null}
+            </span>
+          ) : null}
+        </li>
+      ))}
+    </ul>
   );
 }
 

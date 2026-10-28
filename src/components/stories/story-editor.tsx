@@ -12,6 +12,7 @@ import { Field, FieldDescription, FieldError, FieldLabel } from "#/components/ui
 import { Input } from "#/components/ui/input";
 import { NativeSelect, NativeSelectOption } from "#/components/ui/native-select";
 import {
+  formCriteria,
   readStoryForm,
   storyChanges,
   validateStoryForm,
@@ -20,6 +21,7 @@ import {
 } from "#/lib/stories/story-edit";
 import { editStory } from "#/lib/stories/stories.functions";
 
+import { ProofEditor } from "./proof-editor";
 import { StoryPicker } from "./story-picker";
 
 const PRIORITIES: StoryPriority[] = ["P0", "P1", "P2", "P3"];
@@ -29,8 +31,8 @@ const CONFLICT_MESSAGE =
   "The PRD changed while you were editing, so nothing was saved. The latest version is loaded; save again to apply your changes on top of it.";
 
 /**
- * Edits a story in place: title, user story, acceptance criteria, test
- * seams, priority, complexity, dependencies and phase. Saves only the fields
+ * Edits a story in place: title, user story, acceptance criteria and their
+ * proofs, test seams, priority, complexity, dependencies and phase. Saves only the fields
  * that changed, in one update_user_story write based on the loaded revision.
  */
 export function StoryEditor({ story, onDone }: { story: UserStory; onDone: () => void }) {
@@ -160,6 +162,13 @@ export function StoryEditor({ story, onDone }: { story: UserStory; onDone: () =>
         />
         {errors.acceptanceCriteria ? <FieldError>{errors.acceptanceCriteria}</FieldError> : null}
       </Field>
+
+      <ProofEditor
+        criteria={formCriteria(form)}
+        proofs={form.proofs}
+        error={errors.proofs}
+        onChange={(value) => set("proofs", value)}
+      />
 
       <Field>
         <FieldLabel id={`${id}-seams-label`}>Where it is tested</FieldLabel>

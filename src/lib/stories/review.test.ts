@@ -252,8 +252,40 @@ describe("approve", () => {
         paths: [],
         expectedRevision: 5,
       }),
-    ).toEqual({ status: "approved", commit: null });
+    ).toEqual({ status: "approved", commit: null, decisions: [] });
     expect(readPrd().userStories[0]?.status).toBe("completed");
+  });
+
+  it("records the deviations the user ticked as decisions in the PRD", async () => {
+    const review = setup({ git: false });
+    const prd = readPrd();
+
+    prd.userStories[0]!.log = [
+      {
+        at: "2026-10-15T09:00:00Z",
+        whatsNew: ["Saves"],
+        technicalNotes: [],
+        deviations: ["Saved to IndexedDB, for size", "Added a word count"],
+      },
+    ];
+    write(".prds/notes.json", JSON.stringify(prd));
+
+    expect(
+      await review.approve({
+        filename: "notes.json",
+        storyId: "US001",
+        paths: [],
+        recordDeviations: ["Saved to IndexedDB, for size"],
+        expectedRevision: 5,
+      }),
+    ).toEqual({ status: "approved", commit: null, decisions: ["DEC001"] });
+    expect(readPrd().decisionLog).toEqual([
+      expect.objectContaining({
+        decision: "Saved to IndexedDB, for size",
+        status: "accepted",
+        topic: "story:US001:deviation",
+      }),
+    ]);
   });
 });
 

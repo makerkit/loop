@@ -45,7 +45,13 @@ export const runChecks = createServerFn({ method: "POST" })
 
 /** Approves a story in review: checks, completed, commit of the chosen files. */
 export const approveStory = createServerFn({ method: "POST" })
-  .validator(StoryInput.extend({ paths: Paths, expectedRevision: Revision }))
+  .validator(
+    StoryInput.extend({
+      paths: Paths,
+      recordDeviations: z.array(z.string().min(1).max(5000)).max(100).optional(),
+      expectedRevision: Revision,
+    }),
+  )
   .handler(async ({ data }) => {
     await ensurePrd(data.filename);
 
@@ -127,6 +133,20 @@ export const editStory = createServerFn({ method: "POST" })
           action: z.string().trim().min(1).max(1000),
           benefit: z.string().trim().min(1).max(1000),
           acceptanceCriteria: z.array(Line).min(1).max(100),
+          proofs: z
+            .array(
+              z
+                .object({
+                  criterion: Line,
+                  kind: z.enum(["unit", "integration", "e2e", "judge", "manual", "post-deploy"]),
+                  seam: Line.optional(),
+                  reason: Line.optional(),
+                  fallback: Line.optional(),
+                  rubric: z.array(Line).max(20).optional(),
+                })
+                .strict(),
+            )
+            .max(100),
           testSeams: z.array(Line).max(50),
           designNotes: z.array(Line).max(50),
           securityNotes: z.array(Line).max(50),

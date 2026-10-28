@@ -26,6 +26,15 @@ const prd = normalizePrd(
         priority: "P1",
         dependencies: ["US002"],
         testSeams: ["saveNote service"],
+        proofs: [
+          { criterion: "Saves **instantly**", kind: "judge", rubric: ["No spinner is shown"] },
+          {
+            criterion: "Works offline",
+            kind: "manual",
+            reason: "Needs a real browser going offline",
+            fallback: "The queue replays saved notes",
+          },
+        ],
         log: [
           { at: "2026-10-14T08:00:00Z", whatsNew: ["First try"], technicalNotes: [] },
           {
@@ -80,14 +89,30 @@ describe("StoryDetails", () => {
     expect(html).toContain("Add a link");
   });
 
-  it("shows acceptance criteria, test seams and dependencies", () => {
+  it("shows acceptance criteria with their proofs, test seams and dependencies", () => {
     const html = render();
 
     expect(html).toContain("Save a note");
     expect(html).toContain("<strong>instantly</strong>");
     expect(html).toContain("saveNote service");
+    expect(html).toContain("You check it");
+    expect(html).toContain("Needs a real browser going offline");
+    expect(html).toContain("Tested instead");
     expect(html).toContain("Storage");
     expect(html).toContain("Completed");
+  });
+
+  it("reviews with deviations to record, checks for the user and the review agent", () => {
+    const html = render();
+
+    expect(html).toContain("Ticked deviations are added to the PRD");
+    // Deviations start ticked
+    expect(html).toMatch(/<li class="flex items-start gap-2"><span[^>]*aria-checked="true"/);
+    expect(html).toContain("For you to check");
+    expect(html).toContain("Scored by the review agent");
+    expect(html).toContain("No spinner is shown");
+    expect(html).toContain("Review story US001 from notes.json with the review_story prompt");
+    expect(html).toContain("Edit story");
   });
 
   it("shows the log newest first, with deviations called out", () => {
