@@ -1,7 +1,20 @@
-overrides:
-  "@makerkit/prd": link:../makerkit/packages/prd/dist
 allowBuilds:
   esbuild: true
   lightningcss: true
 minimumReleaseAgeExclude:
-  - "@makerkit/prd@0.0.4"
+  - "@makerkit/*"
+permissions:
+  "@tanstack/devtools-vite":
+    skills: true
+  "@tanstack/match-sorter-utils":
+    skills: true
+  "@tanstack/react-router":
+    skills: [router-query]
+  "@tanstack/react-start":
+    skills: false
+  "@tanstack/react-table":
+    skills: false
+skills:
+  dirs:
+    - .agents/skills
+    - .claude/skills

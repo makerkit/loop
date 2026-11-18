@@ -4,9 +4,6 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
-overrides:
-  '@makerkit/prd': link:../makerkit/packages/prd/dist
-
 importers:
 
   .:
@@ -45,8 +42,8 @@ importers:
         specifier: 0.53.0
         version: 0.53.0(typescript@7.0.2)
       '@makerkit/prd':
-        specifier: link:../makerkit/packages/prd/dist
-        version: link:../makerkit/packages/prd/dist
+        specifier: 0.0.6
+        version: 0.0.6
       '@shadcn/react':
         specifier: ^0.3.1
         version: 0.3.1(@types/react@19.3.0)(react@19.3.1)
@@ -522,6 +519,22 @@ packages:
       yjs: '>=13.5.37'
     peerDependenciesMeta:
       typescript:
+        optional: true
+
+  '@makerkit/prd@0.0.6':
+    resolution: {integrity: sha512-Fj090wmeCG0HPuVrp3y1BEj6cDWF83MJG7QgPz7c1hjqpEbgP0KRbxIFmmTvkqmz0tP6EDSbsOpvCZy19DTzJw==}
+    peerDependencies:
+      '@modelcontextprotocol/sdk': ^1.32.0
+    peerDependenciesMeta:
+      '@modelcontextprotocol/sdk':
+        optional: true
+
+  '@makerkit/repo-checks@0.0.2':
+    resolution: {integrity: sha512-nKI9+cWv36PHBzMixDrK6PQu171K4JtUb54rLs72bIGJpsArPUA8Pc/3h+bE5c9yAPA4I3DPA8o7WTraNXN+jg==}
+    peerDependencies:
+      '@modelcontextprotocol/sdk': ^1.32.0
+    peerDependenciesMeta:
+      '@modelcontextprotocol/sdk':
         optional: true
 
   '@napi-rs/wasm-runtime@1.2.6':
@@ -3439,6 +3452,15 @@ snapshots:
       yjs: 13.6.33
     optionalDependencies:
       typescript: 7.0.2
+
+  '@makerkit/prd@0.0.6':
+    dependencies:
+      '@makerkit/repo-checks': 0.0.2
+      zod: 4.6.7
+
+  '@makerkit/repo-checks@0.0.2':
+    dependencies:
+      zod: 4.6.7
 
   '@napi-rs/wasm-runtime@1.2.6(@emnapi/core@2.0.0-beta.2)(@emnapi/runtime@2.0.0-beta.2)':
     dependencies:
