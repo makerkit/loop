@@ -107,8 +107,11 @@ export function EdgeCasesEditor({
   latest: React.ReactNode;
   onDone: () => void;
 }) {
-  const { prd } = usePrdEdit();
-  const { submit, saving, conflict } = useSectionSave("edgeCases");
+  const { filename, prd } = usePrdEdit();
+  const { submit, saving, conflict } = useSectionSave("edgeCases", {
+    filename,
+    revision: prd.metadata.revision ?? 0,
+  });
   const formId = useId();
 
   const [rows, setRows] = useState<EdgeCaseRow[]>(() => {

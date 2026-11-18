@@ -23,6 +23,7 @@ import { StoryStatusBadge } from "./story-status";
 /** One story with everything needed to follow or review it. */
 export function StoryDetails({
   filename,
+  prdsPath,
   prd,
   story,
   waitingOn,
@@ -34,6 +35,7 @@ export function StoryDetails({
   /** Open at a step: sending a story in review back, or reopening a completed one. */
   startStep?: StoryStep;
   filename: string;
+  prdsPath?: string;
   prd: StructuredPRD;
   story: UserStory;
   waitingOn: string[];
@@ -55,7 +57,7 @@ export function StoryDetails({
   const log = [...(story.log ?? [])].reverse();
 
   return (
-    <PrdFileProvider value={filename}>
+    <PrdFileProvider value={filename} prdsPath={prdsPath}>
       <SheetHeader className="gap-3 border-b px-6 py-5 pr-14">
         <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
           <span className="font-mono">{story.id}</span>

@@ -6,9 +6,21 @@ import { cn } from "#/lib/utils";
 import { isHttpUrl, resolveImageSrc } from "#/lib/prds/prd-paths";
 
 /** The PRD file whose attachments folder Markdown images may load from. */
-const PrdFileContext = createContext<string | null>(null);
+const PrdFileContext = createContext<{ filename: string; prdsPath?: string } | null>(null);
 
-export const PrdFileProvider = PrdFileContext.Provider;
+export function PrdFileProvider({
+  value: filename,
+  prdsPath,
+  children,
+}: {
+  value: string;
+  prdsPath?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <PrdFileContext.Provider value={{ filename, prdsPath }}>{children}</PrdFileContext.Provider>
+  );
+}
 
 /** Inline Markdown only: what list items (criteria, non-goals...) may use. */
 const INLINE_ELEMENTS = ["strong", "em", "del", "code", "a", "img", "br"];
@@ -29,7 +41,7 @@ export function Markdown({
   inline?: boolean;
   className?: string;
 }) {
-  const filename = useContext(PrdFileContext);
+  const file = useContext(PrdFileContext);
 
   const components: Components = {
     a: ({ href, children }) =>
@@ -41,7 +53,8 @@ export function Markdown({
         <span>{children}</span>
       ),
     img: ({ src, alt }) => {
-      const url = typeof src === "string" && filename ? resolveImageSrc(src, filename) : null;
+      const url =
+        typeof src === "string" && file ? resolveImageSrc(src, file.filename, file.prdsPath) : null;
 
       return url ? (
         <img src={url} alt={alt ?? ""} loading="lazy" className="max-w-full rounded-md border" />

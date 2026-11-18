@@ -107,14 +107,17 @@ export const moveStory = createServerFn({ method: "POST" })
 export const getProjectActivity = createServerFn({ method: "GET" }).handler(async () => {
   const { stat } = await import("node:fs/promises");
   const { join } = await import("node:path");
-  const { getProjectRoot } = await import("#/lib/prds/project.server");
+  const { getGitPrdsDir, getProjectRoot } = await import("#/lib/prds/project.server");
   const root = getProjectRoot();
   const state = await getGitForProject().state();
-  const lastChangedAt = await lastProjectChange(state.files, (path) =>
-    stat(join(root, path)).then(
-      (stats) => stats.mtimeMs,
-      () => null,
-    ),
+  const lastChangedAt = await lastProjectChange(
+    state.files,
+    (path) =>
+      stat(join(root, path)).then(
+        (stats) => stats.mtimeMs,
+        () => null,
+      ),
+    getGitPrdsDir(),
   );
 
   return { lastChangedAt, now: Date.now() };

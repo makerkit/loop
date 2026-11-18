@@ -11,6 +11,7 @@ export interface ReviewDeps {
   prd: Pick<PrdService, "get" | "updateStoryStatus" | "updateUserStory">;
   git: Git;
   root: string;
+  prdGitDir?: string | null;
   today(): string;
 }
 
@@ -19,7 +20,7 @@ export interface ReviewInfo {
   /** Changed files, with this PRD's own file marked: it is always committed. */
   files: Array<GitChangedFile & { isPrdFile: boolean }>;
   blockers: string[];
-  prdPath: string;
+  prdPath: string | null;
 }
 
 export type ReviewResult =
@@ -78,7 +79,26 @@ function isConflict(error: unknown) {
  * (through PrdService), marks the story completed, then commits the files
  * the user chose plus the PRD file, leaving every other change alone.
  */
+export function isOtherPrdFile(file: GitChangedFile, prdPath: string | null) {
+  if (!prdPath) return false;
+
+  const directory = prdPath.slice(0, prdPath.lastIndexOf("/") + 1);
+  const folder = prdPath.replace(/\.json$/, "") + "/";
+  return [file.path, file.previousPath].some((path) =>
+    Boolean(
+      path &&
+      directory &&
+      path.startsWith(directory) &&
+      path !== prdPath &&
+      !path.startsWith(folder),
+    ),
+  );
+}
+
 export function createReviewService(deps: ReviewDeps) {
+  const location = deps.prdGitDir === undefined ? ".prds" : deps.prdGitDir;
+  const prdGitPath = (filename: string) =>
+    location === null ? null : location ? location + "/" + filename : filename;
   const clean = (text: string) => sanitizeOutput(text, deps.root);
 
   async function loadStory(filename: string, storyId: string) {
@@ -93,7 +113,7 @@ export function createReviewService(deps: ReviewDeps) {
   }
 
   async function info(filename: string): Promise<ReviewInfo> {
-    const prdPath = `.prds/${filename}`;
+    const prdPath = prdGitPath(filename);
     const state = await deps.git.state();
 
     return {
@@ -110,17 +130,13 @@ export function createReviewService(deps: ReviewDeps) {
    * browser's list on its own.
    */
   async function pathsToCommit(filename: string, chosen: string[]) {
-    const prdPath = `.prds/${filename}`;
-    const folder = filename.replace(/\.json$/, "");
+    const prdPath = prdGitPath(filename);
     const { files } = await deps.git.state();
     const wanted = new Set(chosen);
     const paths = new Set<string>();
 
     for (const file of files) {
-      // Other PRDs' files are never committed with this story; its own attachments may be
-      const otherPrd = file.path.startsWith(".prds/") && !file.path.startsWith(`.prds/${folder}/`);
-
-      if (file.path === prdPath || (wanted.has(file.path) && !otherPrd)) {
+      if (!isOtherPrdFile(file, prdPath) && (file.path === prdPath || wanted.has(file.path))) {
         paths.add(file.path);
 
         if (file.previousPath) {
@@ -190,11 +206,13 @@ export function createReviewService(deps: ReviewDeps) {
       }
 
       try {
-        return {
-          status: "approved",
-          commit: await commit(input.filename, story, input.paths),
-          decisions,
-        };
+        const paths = await pathsToCommit(input.filename, input.paths);
+        const commit =
+          location === null && paths.length === 0
+            ? null
+            : await deps.git.commit(paths, commitMessage(story));
+
+        return { status: "approved", commit, decisions };
       } catch (error) {
         return {
           status: "approved",

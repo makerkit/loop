@@ -7,8 +7,6 @@ import { useState } from "react";
 import { Alert, AlertDescription, AlertTitle } from "#/components/ui/alert";
 import { updatePrdSection } from "#/lib/prds/prds.functions";
 
-import { usePrdEdit } from "./prd-edit-context";
-
 export type SaveOutcome =
   | { status: "saved" }
   | { status: "invalid"; message: string }
@@ -20,12 +18,14 @@ export type SaveOutcome =
  * started from. On a conflict nothing is saved and the latest PRD is loaded;
  * saving again then means "my version, knowing the latest one".
  */
-export function useSectionSave(section: PrdSection) {
-  const { filename, prd } = usePrdEdit();
+export function useSectionSave(
+  section: PrdSection,
+  { filename, revision }: { filename: string; revision: number },
+) {
   const router = useRouter();
   const save = useServerFn(updatePrdSection);
 
-  const [baseRevision, setBaseRevision] = useState<number | null>(prd.metadata.revision ?? 0);
+  const [baseRevision, setBaseRevision] = useState<number | null>(revision);
   const [conflict, setConflict] = useState(false);
   const [saving, setSaving] = useState(false);
 
@@ -38,7 +38,7 @@ export function useSectionSave(section: PrdSection) {
           filename,
           section,
           value,
-          expectedRevision: baseRevision ?? prd.metadata.revision ?? 0,
+          expectedRevision: baseRevision ?? revision,
         },
       });
 

@@ -1,10 +1,5 @@
-import {
-  incompleteDependencies,
-  type GetNextStoryOutput,
-  type StoryStatus,
-  type StructuredPRD,
-  type UserStory,
-} from "@makerkit/prd";
+import type { GetNextStoryOutput, StoryStatus, StructuredPRD, UserStory } from "@makerkit/prd";
+import { incompleteDependencies } from "@makerkit/prd/operations";
 
 export interface PhaseGroup<T> {
   id: string;
@@ -82,8 +77,14 @@ export const STATUS_LABELS = Object.fromEntries(
   COLUMNS.map((column) => [column.status, column.label]),
 ) as Record<StoryStatus, string>;
 
+export type StoryBoardOrder = "plan" | "priority" | "title";
+
 /** The stories as board columns by status, each grouped by phase in build order. */
-export function buildStoryBoard(prd: StructuredPRD, next: GetNextStoryOutput): BoardColumn[] {
+export function buildStoryBoard(
+  prd: StructuredPRD,
+  next: GetNextStoryOutput,
+  order: StoryBoardOrder = "plan",
+): BoardColumn[] {
   return COLUMNS.map((column) => {
     const groups = groupStoriesByPhase(prd, (story) =>
       story.status === column.status
@@ -95,6 +96,14 @@ export function buildStoryBoard(prd: StructuredPRD, next: GetNextStoryOutput): B
           }
         : null,
     );
+
+    for (const { items } of groups) {
+      if (order === "priority") {
+        items.sort((a, b) => a.story.priority.localeCompare(b.story.priority));
+      } else if (order === "title") {
+        items.sort((a, b) => a.story.title.localeCompare(b.story.title));
+      }
+    }
 
     const count = groups.reduce((total, group) => total + group.items.length, 0);
 

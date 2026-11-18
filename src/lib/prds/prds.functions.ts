@@ -28,7 +28,7 @@ export const listPrds = createServerFn({ method: "GET" }).handler(() =>
   }),
 );
 
-/** One PRD, read through PrdService. The absolute file path is not sent. */
+/** One PRD and its attachment directory prefix, read through PrdService. */
 export const getPrd = createServerFn({ method: "GET" })
   .validator(z.object({ filename: PrdFilenameSchema }))
   .handler(async ({ data }) => {
@@ -36,11 +36,13 @@ export const getPrd = createServerFn({ method: "GET" })
       throw notFound();
     }
 
-    const { filename, prd } = await getPrdService().get({ filename: data.filename });
+    const service = getPrdService();
+    const { filename, prd } = await service.get({ filename: data.filename });
 
     return {
       filename,
       prd,
+      prdsPath: service.prdsPath,
       missingAttachmentIds: await missingAttachments(filename, prd.attachments),
     };
   });

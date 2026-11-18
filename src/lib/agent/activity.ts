@@ -8,11 +8,12 @@ import type { GitChangedFile } from "#/lib/git/git-status";
 export async function lastProjectChange(
   files: GitChangedFile[],
   modifiedAt: (path: string) => Promise<number | null>,
+  prdGitDir: string | null = ".prds",
 ): Promise<number | null> {
   let latest: number | null = null;
 
   for (const file of files) {
-    if (file.kind === "deleted" || file.path.startsWith(".prds/")) {
+    if (file.kind === "deleted" || (prdGitDir && file.path.startsWith(prdGitDir + "/"))) {
       continue;
     }
 

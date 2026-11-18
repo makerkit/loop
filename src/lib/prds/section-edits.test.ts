@@ -33,6 +33,23 @@ describe("section edits", () => {
     }
   });
 
+  it("distinguishes order zero, a cleared order and malformed input", () => {
+    const edit = SECTION_EDITS.roadmap;
+    const schema = PrdSectionValueSchemas.roadmap;
+    const values = readEditValues(edit, { ...prd, roadmap: { order: 0, plan: "Launch" } });
+
+    expect(schema.parse(buildSectionValue(edit, values))).toMatchObject({
+      order: 0,
+      plan: "Launch",
+    });
+    expect(schema.parse(buildSectionValue(edit, { ...values, order: "" }))).toMatchObject({
+      order: null,
+    });
+    expect(schema.safeParse(buildSectionValue(edit, { ...values, order: "1e" })).success).toBe(
+      false,
+    );
+  });
+
   it("round-trips lists as one item per line", () => {
     const edit = SECTION_EDITS.nonGoals;
 

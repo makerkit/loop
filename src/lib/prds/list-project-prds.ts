@@ -13,6 +13,7 @@ export interface PrdListItem extends PrdSummary {
   /** First paragraph of the overview, plain text, for the list. */
   summary: string;
   overview: PrdOverview;
+  revision: number;
 }
 
 export interface ProjectPrds {
@@ -43,6 +44,8 @@ export async function listProjectPrds(deps: ListProjectPrdsDeps): Promise<Projec
 
       return {
         ...summary,
+        roadmap: prd.roadmap,
+        revision: prd.metadata.revision ?? 0,
         summary: firstParagraph(prd.introduction.overview),
         overview: getPrdOverview(prd, check),
       };

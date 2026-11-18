@@ -46,7 +46,17 @@ const KIT_SERVER_DIRS = ["packages/mcp-server", "tooling/mcp-server"];
 /** Inside a Makerkit kit, its own MCP server; elsewhere @makerkit/prd-mcp. */
 export async function chooseServer(
   deps: Pick<AgentDeps, "readProjectFile">,
+  storage?: { root: string; prdsDir: string },
 ): Promise<ServerCommand> {
+  if (storage) {
+    return {
+      kind: "prd",
+      name: "prd",
+      command: "npx",
+      args: ["-y", "@makerkit/prd-mcp", "--root", storage.root, "--prds-dir", storage.prdsDir],
+    };
+  }
+
   for (const dir of KIT_SERVER_DIRS) {
     const text = await deps.readProjectFile(`${dir}/package.json`);
     const manifest = text ? safeJson(text) : null;
@@ -82,7 +92,30 @@ export function isPrdServer(command: unknown, args: unknown) {
   return /prd-mcp|mcp-server\/build\/index\.|makerkit-mcp-server/.test(parts);
 }
 
-function claudeConnected(text: string | null) {
+/** A custom store needs the explicit root and directory, even when the tools are already installed. */
+export function matchesPrdServer(command: unknown, args: unknown, recommended: ServerCommand) {
+  if (!isPrdServer(command, args)) return false;
+
+  if (!recommended.args.includes("--prds-dir")) return true;
+
+  const pathArg = (values: unknown[], flag: string) => {
+    const index = values.indexOf(flag);
+    if (index !== -1) return values[index + 1];
+
+    const prefix = flag + "=";
+    const argument = values.find((value) => typeof value === "string" && value.startsWith(prefix));
+    return typeof argument === "string" ? argument.slice(prefix.length) : undefined;
+  };
+
+  return (
+    Array.isArray(args) &&
+    ["--root", "--prds-dir"].every(
+      (flag) => pathArg(args, flag) === pathArg(recommended.args, flag),
+    )
+  );
+}
+
+function claudeConnected(text: string | null, recommended: ServerCommand) {
   const servers = text
     ? (safeJson(text) as { mcpServers?: Record<string, unknown> } | null)?.mcpServers
     : null;
@@ -90,17 +123,17 @@ function claudeConnected(text: string | null) {
   return Object.values(servers ?? {}).some((server) => {
     const entry = server as { command?: unknown; args?: unknown };
 
-    return isPrdServer(entry?.command, entry?.args);
+    return matchesPrdServer(entry?.command, entry?.args, recommended);
   });
 }
 
-function opencodeConnected(text: string | null) {
+function opencodeConnected(text: string | null, recommended: ServerCommand) {
   const servers = text ? (safeJson(text) as { mcp?: Record<string, unknown> } | null)?.mcp : null;
 
   return Object.values(servers ?? {}).some((server) => {
     const command = (server as { command?: unknown })?.command;
 
-    return Array.isArray(command) && isPrdServer(command[0], command.slice(1));
+    return Array.isArray(command) && matchesPrdServer(command[0], command.slice(1), recommended);
   });
 }
 
@@ -127,7 +160,7 @@ export async function detectAgents(deps: AgentDeps, server: ServerCommand): Prom
       id: "claude",
       name: "Claude Code",
       installed: claudeInstalled,
-      connected: claudeConnected(mcpJson),
+      connected: claudeConnected(mcpJson, server),
       configFile: ".mcp.json",
       ...(mcpJson !== null && safeJson(mcpJson) === null
         ? { cannotApply: ".mcp.json is not valid JSON; fix it or add the server by hand." }
@@ -147,7 +180,7 @@ export async function detectAgents(deps: AgentDeps, server: ServerCommand): Prom
       id: "opencode",
       name: "OpenCode",
       installed: opencodeInstalled,
-      connected: opencodeConnected(opencodeJson ?? stripJsonComments(opencodeJsonc)),
+      connected: opencodeConnected(opencodeJson ?? stripJsonComments(opencodeJsonc), server),
       configFile: "opencode.json",
       ...(opencodeJsonc !== null
         ? {

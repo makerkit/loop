@@ -39,10 +39,11 @@ export function openCommand(platform, url) {
 
 /**
  * @param {string[]} argv the arguments after `loop`
- * @returns {{ open: boolean; help: boolean; port: number | null; error?: string }}
+ * @returns {{ open: boolean; help: boolean; port: number | null; prdsDir?: string; error?: string }}
  */
 export function parseArgs(argv) {
-  const options = { open: true, help: false, port: /** @type {number | null} */ (null) };
+  /** @type {{ open: boolean, help: boolean, port: number | null, prdsDir?: string }} */
+  const options = { open: true, help: false, port: null };
 
   for (let index = 0; index < argv.length; index++) {
     const arg = argv[index];
@@ -58,6 +59,14 @@ export function parseArgs(argv) {
       }
 
       options.port = port;
+    } else if (arg === "--prds-dir" || arg.startsWith("--prds-dir=")) {
+      const value = arg === "--prds-dir" ? argv[++index] : arg.slice("--prds-dir=".length);
+
+      if (!value?.trim() || (arg === "--prds-dir" && value.startsWith("--"))) {
+        return { ...options, error: "Missing directory for --prds-dir." };
+      }
+
+      options.prdsDir = value;
     } else {
       return { ...options, error: `Unknown option: ${arg}` };
     }
@@ -76,7 +85,7 @@ export function projectNotes({ hasPrds, hasPackageJson, hasGit }) {
 
   if (!hasPrds) {
     notes.push(
-      "No .prds folder yet: plan a feature with your agent's shape_prd prompt to create one.",
+      "No PRD directory yet: plan a feature with your agent's shape_prd prompt to create one.",
     );
   }
 
@@ -98,6 +107,7 @@ your browser. Loop only listens on 127.0.0.1.
 
 Options:
   --port <number>  Use this port (default: 3000, or the next free one)
+  --prds-dir <dir>  PRD directory, absolute or relative to the project (default: .prds)
   --no-open        Do not open the browser; just print the link
   -h, --help       Show this help
 `;

@@ -20,22 +20,25 @@ import { DocumentStories } from "./document-stories";
 import { EdgeCaseTable, EdgeCasesEditor } from "./edge-cases";
 import { OpenQuestions } from "./open-questions";
 import { EditableSection, EditableSubsection } from "./editable-section";
+import { RoadmapFields } from "./roadmap-fields";
 import { PrdEditProvider } from "./prd-edit-context";
 
 /** A PRD as a readable document. Markdown in PRD text is rendered safely. */
 export function PrdDocument({
   filename,
+  prdsPath,
   prd,
   flags,
 }: {
   filename: string;
+  prdsPath?: string;
   prd: StructuredPRD;
   flags: DocumentFlags;
 }) {
   const { problemStatement: problem, solutionOverview: solution } = prd;
 
   return (
-    <PrdFileProvider value={filename}>
+    <PrdFileProvider value={filename} prdsPath={prdsPath}>
       <PrdEditProvider value={{ filename, prd }}>
         <DocumentFlagsProvider value={flags}>
           <article className="grid min-w-0 gap-10 rounded-xl border bg-card px-5 py-8 shadow-xs [overflow-wrap:anywhere] sm:px-10 sm:py-10">
@@ -68,6 +71,15 @@ export function PrdDocument({
               <OptionalText text={solution.description} />
               <OptionalList title="Key features" items={solution.keyFeatures} />
               <OptionalList title="Success metrics" items={solution.successMetrics} />
+            </EditableSection>
+
+            <EditableSection
+              id="roadmap"
+              title="Roadmap"
+              edit={SECTION_EDITS.roadmap}
+              isEmpty={isSectionEmpty(prd, "roadmap")}
+            >
+              <RoadmapFields roadmap={prd.roadmap} />
             </EditableSection>
 
             <DocumentSection id="scope" title="Scope">

@@ -15,7 +15,12 @@ import { Textarea } from "#/components/ui/textarea";
 import type { GitChangedFile } from "#/lib/git/git-status";
 import type { ReviewInfo, ReviewResult } from "#/lib/stories/review";
 import { reviewChecks } from "#/lib/stories/proofs";
-import { collectDeviations, commitMessage, reviewInstruction } from "#/lib/stories/review";
+import {
+  collectDeviations,
+  commitMessage,
+  isOtherPrdFile,
+  reviewInstruction,
+} from "#/lib/stories/review";
 import {
   approveStory,
   commitStoryAgain,
@@ -448,12 +453,6 @@ function DeviationRow({
   );
 }
 
-function isOtherPrdFile(file: GitChangedFile, prdPath: string) {
-  const folder = `${prdPath.replace(/\.json$/, "")}/`;
-
-  return file.path.startsWith(".prds/") && file.path !== prdPath && !file.path.startsWith(folder);
-}
-
 const KIND_LABELS: Record<GitChangedFile["kind"], string> = {
   added: "Added",
   modified: "Modified",
@@ -482,7 +481,9 @@ function FileList({
         is always committed with the story.
       </p>
       <ul className="max-h-64 divide-y overflow-y-auto rounded-lg border bg-background text-sm">
-        {!hasPrdFile ? <FileRow path={info.prdPath} kind="Status update" checked disabled /> : null}
+        {info.prdPath && !hasPrdFile ? (
+          <FileRow path={info.prdPath} kind="Status update" checked disabled />
+        ) : null}
         {info.files.map((file) => {
           const otherPrd = isOtherPrdFile(file, info.prdPath);
 

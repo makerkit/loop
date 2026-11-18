@@ -1,5 +1,6 @@
 import { createFileRoute, notFound, useLocation, useNavigate } from "@tanstack/react-router";
 import { ListTodoIcon } from "lucide-react";
+import { useState } from "react";
 
 import {
   PrdPageError,
@@ -21,11 +22,12 @@ import {
   EmptyMedia,
   EmptyTitle,
 } from "#/components/ui/empty";
+import { NativeSelect, NativeSelectOption } from "#/components/ui/native-select";
 import { Sheet, SheetContent } from "#/components/ui/sheet";
 import { PrdFilenameSchema } from "#/lib/prds/prd-paths";
 import { nextStep } from "#/lib/agent/next-step";
 import { getNextStory, getPlanCheck, getPrd } from "#/lib/prds/prds.functions";
-import { buildStoryBoard } from "#/lib/prds/story-board";
+import { buildStoryBoard, type StoryBoardOrder } from "#/lib/prds/story-board";
 
 export const Route = createFileRoute("/prds/$filename_/stories")({
   // `?story=US001` opens that story; `&edit=1` opens it in the editor. The
@@ -61,12 +63,13 @@ export const Route = createFileRoute("/prds/$filename_/stories")({
 });
 
 function StoriesPage() {
-  const { filename, prd, next, planCheck, missingAttachmentIds } = Route.useLoaderData();
+  const { filename, prdsPath, prd, next, planCheck, missingAttachmentIds } = Route.useLoaderData();
   const { story: storyId, edit } = Route.useSearch();
   const step = useLocation({ select: (location) => location.state.step });
   const navigate = useNavigate({ from: Route.fullPath });
 
-  const columns = buildStoryBoard(prd, next);
+  const [order, setOrder] = useState<StoryBoardOrder>("plan");
+  const columns = buildStoryBoard(prd, next, order);
   const openStory = prd.userStories.find((story) => story.id === storyId);
   // Same rule as the board's cards (and PrdService): dependencies not completed
   const waitingOn =
@@ -93,6 +96,20 @@ function StoriesPage() {
           ) : (
             <div className="grid gap-6">
               <AskYourAgent filename={filename} step={nextStep(filename, prd, next, planCheck)} />
+              <div className="flex justify-end">
+                <NativeSelect
+                  aria-label="Story order"
+                  value={order}
+                  onChange={(event) => {
+                    const value = event.target.value;
+                    setOrder(value === "priority" || value === "title" ? value : "plan");
+                  }}
+                >
+                  <NativeSelectOption value="plan">Stories by plan order</NativeSelectOption>
+                  <NativeSelectOption value="priority">Stories by priority</NativeSelectOption>
+                  <NativeSelectOption value="title">Stories A–Z</NativeSelectOption>
+                </NativeSelect>
+              </div>
               <StoryBoard filename={filename} columns={columns} />
             </div>
           )}
@@ -110,6 +127,7 @@ function StoriesPage() {
                 <StoryDetails
                   key={openStory.id}
                   filename={filename}
+                  prdsPath={prdsPath}
                   prd={prd}
                   story={openStory}
                   waitingOn={waitingOn}

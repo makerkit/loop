@@ -36,6 +36,11 @@ describe("parseArgs", () => {
     });
     expect(parseArgs(["--port=5000"])).toMatchObject({ port: 5000 });
     expect(parseArgs(["-h"])).toMatchObject({ help: true });
+    expect(parseArgs(["--prds-dir", "docs/product plans"])).toMatchObject({
+      prdsDir: "docs/product plans",
+    });
+    expect(parseArgs(["--prds-dir=/tmp/plans"])).toMatchObject({ prdsDir: "/tmp/plans" });
+    expect(parseArgs(["--prds-dir", "--no-open"]).error).toBe("Missing directory for --prds-dir.");
   });
 
   it("rejects bad input", () => {

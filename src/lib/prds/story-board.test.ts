@@ -75,6 +75,32 @@ describe("buildStoryBoard", () => {
     ]);
   });
 
+  it("sorts the view within phases without changing plan order or readiness", () => {
+    const next = pickNextStory(prd);
+    const title = buildStoryBoard(prd, next, "title").find((c) => c.status === "not_started")!;
+    expect(title.groups.map((group) => group.items.map(({ story }) => story.id))).toEqual([
+      ["US002", "US003"],
+      ["US005"],
+    ]);
+    expect(title.groups[0]?.items[1]).toMatchObject({ isNext: false, waitingOn: ["US002"] });
+
+    const prioritized = {
+      ...prd,
+      userStories: prd.userStories.map((story) => ({
+        ...story,
+        priority: story.id === "US002" ? ("P0" as const) : story.priority,
+      })),
+    };
+    const priority = buildStoryBoard(prioritized, next, "priority").find(
+      (c) => c.status === "not_started",
+    )!;
+    expect(priority.groups[0]?.items.map(({ story }) => story.id)).toEqual(["US002", "US003"]);
+    expect(column("not_started").groups[0]?.items.map(({ story }) => story.id)).toEqual([
+      "US003",
+      "US002",
+    ]);
+  });
+
   it("highlights the next ready story and says what waiting stories wait for", () => {
     const byId = Object.fromEntries(cards("not_started").map((card) => [card.story.id, card]));
 

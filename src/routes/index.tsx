@@ -1,15 +1,16 @@
 import { createFileRoute, useRouter, type ErrorComponentProps } from "@tanstack/react-router";
-import { CircleAlertIcon } from "lucide-react";
+import { CircleAlertIcon, SearchIcon } from "lucide-react";
 import { useState } from "react";
 
 import { PrdList, PrdListEmpty, PrdListWarnings } from "#/components/prds/prd-list";
 import { Alert, AlertAction, AlertDescription, AlertTitle } from "#/components/ui/alert";
 import { Button } from "#/components/ui/button";
+import { Input } from "#/components/ui/input";
+import { NativeSelect, NativeSelectOption } from "#/components/ui/native-select";
 import { Skeleton } from "#/components/ui/skeleton";
-import { STAGE_LABELS, type PrdStage } from "#/lib/prds/prd-overview";
+import { STAGE_LABELS } from "#/lib/prds/prd-overview";
 import { getAgentSetupFn } from "#/lib/agents/agents.functions";
 import { listPrds } from "#/lib/prds/prds.functions";
-import { cn } from "#/lib/utils";
 
 export const Route = createFileRoute("/")({
   loader: async () => {
@@ -27,65 +28,168 @@ export const Route = createFileRoute("/")({
   errorComponent: PrdsError,
 });
 
-type Filter = "all" | "waiting" | PrdStage;
+const ROADMAP_FILTERS = [
+  ["plan", "Plan"],
+  ["group", "Group"],
+  ["section", "Section"],
+  ["criticality", "Criticality"],
+] as const;
+
+const CRITICALITY_ORDER: readonly string[] = ["critical", "high", "medium", "low"];
+
+type RoadmapFilters = Partial<Record<(typeof ROADMAP_FILTERS)[number][0], string>>;
 
 function PrdsPage() {
   const { hasPrdsDir, prds, warnings, connectedAgents } = Route.useLoaderData();
-  const [filter, setFilter] = useState<Filter>("all");
+  const [stage, setStage] = useState("");
+  const [query, setQuery] = useState("");
+  const [roadmap, setRoadmap] = useState<RoadmapFilters>({});
+  const [sectionOrder, setSectionOrder] = useState<"roadmap" | "title">("roadmap");
 
-  const waiting = prds.filter((prd) => prd.overview.waitingOnUser).length;
-  const filters: Array<{ id: Filter; label: string; count: number }> = [
-    { id: "all" as Filter, label: "All", count: prds.length },
-    { id: "waiting" as Filter, label: "Waiting on you", count: waiting },
-    ...(Object.keys(STAGE_LABELS) as PrdStage[]).map((stage) => ({
-      id: stage as Filter,
-      label: STAGE_LABELS[stage],
-      count: prds.filter((prd) => prd.overview.stage === stage).length,
-    })),
-  ].filter((option) => option.id === "all" || option.count > 0);
+  const terms = query.toLowerCase().trim().split(/\s+/).filter(Boolean);
+  const hasFilters = Boolean(terms.length || stage || Object.values(roadmap).some(Boolean));
+  const shown = prds.filter((prd) => {
+    const matchesStage =
+      !stage || (stage === "waiting" ? prd.overview.waitingOnUser : prd.overview.stage === stage);
+    const matchesRoadmap = ROADMAP_FILTERS.every(
+      ([key]) => !roadmap[key] || (prd.roadmap?.[key] ?? "") === roadmap[key],
+    );
+    const searchable = [
+      prd.title,
+      prd.filename,
+      prd.summary,
+      prd.roadmap?.plan,
+      prd.roadmap?.group,
+      prd.roadmap?.section,
+      prd.roadmap?.criticality,
+    ]
+      .join(" ")
+      .toLowerCase();
 
-  const shown = prds.filter((prd) =>
-    filter === "all"
-      ? true
-      : filter === "waiting"
-        ? prd.overview.waitingOnUser
-        : prd.overview.stage === filter,
+    return matchesStage && matchesRoadmap && terms.every((term) => searchable.includes(term));
+  });
+  const hasSections = prds.some(
+    ({ roadmap }) => roadmap?.plan || roadmap?.group || roadmap?.section,
   );
 
+  function clearFilters() {
+    setStage("");
+    setQuery("");
+    setRoadmap({});
+  }
+
   return (
-    <PrdsLayout
-      summary={
-        prds.length > 0
-          ? `${prds.length} ${prds.length === 1 ? "PRD" : "PRDs"}${waiting > 0 ? ` · ${waiting} waiting on you` : ""}`
-          : undefined
-      }
-    >
+    <PrdsLayout>
       <PrdListWarnings warnings={warnings} />
 
-      {prds.length > 1 ? (
-        <div role="radiogroup" aria-label="Show" className="flex flex-wrap gap-2">
-          {filters.map((option) => (
-            <button
-              key={option.id}
-              type="button"
-              role="radio"
-              aria-checked={filter === option.id}
-              onClick={() => setFilter(option.id)}
-              className={cn(
-                "inline-flex h-8 items-center gap-1.5 rounded-full border bg-background px-3 text-sm transition-colors hover:bg-muted",
-                filter === option.id &&
-                  "border-foreground bg-foreground text-background hover:bg-foreground",
-              )}
-            >
-              {option.label}
-              <span className="text-xs opacity-70 tabular-nums">{option.count}</span>
-            </button>
-          ))}
-        </div>
-      ) : null}
-
       {prds.length > 0 ? (
-        <PrdList prds={shown} />
+        <>
+          <div
+            role="search"
+            aria-label="Find PRDs"
+            className="grid gap-3 rounded-xl border bg-card p-4 shadow-xs"
+          >
+            <div className="relative">
+              <SearchIcon
+                aria-hidden="true"
+                className="pointer-events-none absolute top-2 left-2.5 size-4 text-muted-foreground"
+              />
+              <Input
+                type="search"
+                aria-label="Search PRDs"
+                placeholder="Search PRDs"
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                className="pl-8"
+              />
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <NativeSelect
+                aria-label="Stage"
+                value={stage}
+                onChange={(event) => setStage(event.target.value)}
+              >
+                <NativeSelectOption value="">All stages</NativeSelectOption>
+                <NativeSelectOption value="waiting">Waiting on you</NativeSelectOption>
+                {Object.entries(STAGE_LABELS).map(([value, label]) => (
+                  <NativeSelectOption key={value} value={value}>
+                    {label}
+                  </NativeSelectOption>
+                ))}
+              </NativeSelect>
+              {ROADMAP_FILTERS.map(([key, label]) => {
+                const values = new Set(
+                  prds.flatMap((prd) => (prd.roadmap?.[key] ? [prd.roadmap[key]] : [])),
+                );
+                const selected = roadmap[key];
+
+                // Keep a selected option visible if a live edit removes its last PRD.
+                if (selected) values.add(selected);
+
+                const options =
+                  key === "criticality"
+                    ? CRITICALITY_ORDER.filter((value) => values.has(value))
+                    : [...values].sort((a, b) => a.localeCompare(b));
+
+                if (options.length === 0) return null;
+
+                return (
+                  <NativeSelect
+                    key={key}
+                    aria-label={label}
+                    className="min-w-0 max-w-full"
+                    value={selected ?? ""}
+                    onChange={(event) => setRoadmap({ ...roadmap, [key]: event.target.value })}
+                  >
+                    <NativeSelectOption value="">
+                      {key === "criticality"
+                        ? "Any criticality"
+                        : "All " + label.toLowerCase() + "s"}
+                    </NativeSelectOption>
+                    {options.map((value) => (
+                      <NativeSelectOption key={value} value={value}>
+                        {key === "criticality" ? value[0]?.toUpperCase() + value.slice(1) : value}
+                      </NativeSelectOption>
+                    ))}
+                  </NativeSelect>
+                );
+              })}
+              {hasSections ? (
+                <NativeSelect
+                  aria-label="Section order"
+                  value={sectionOrder}
+                  onChange={(event) =>
+                    setSectionOrder(event.target.value === "title" ? "title" : "roadmap")
+                  }
+                >
+                  <NativeSelectOption value="roadmap">Sections by roadmap order</NativeSelectOption>
+                  <NativeSelectOption value="title">Sections A–Z</NativeSelectOption>
+                </NativeSelect>
+              ) : null}
+              {hasFilters ? (
+                <Button variant="ghost" size="sm" onClick={clearFilters}>
+                  Clear filters
+                </Button>
+              ) : null}
+            </div>
+          </div>
+          {hasFilters ? (
+            <p role="status" className="text-sm text-muted-foreground">
+              {shown.length} of {prds.length} PRDs
+            </p>
+          ) : null}
+          <PrdList
+            prds={prds}
+            visiblePrds={shown}
+            sectionOrder={sectionOrder}
+            filterKey={JSON.stringify([query, stage, roadmap])}
+          />
+          {!shown.length ? (
+            <p className="rounded-xl border bg-card p-6 text-sm text-muted-foreground">
+              No PRDs match your search and filters.
+            </p>
+          ) : null}
+        </>
       ) : (
         <PrdListEmpty hasPrdsDir={hasPrdsDir} connectedAgents={connectedAgents} />
       )}
@@ -122,15 +226,10 @@ function PrdsError({ error }: ErrorComponentProps) {
   );
 }
 
-function PrdsLayout({ summary, children }: { summary?: string; children: React.ReactNode }) {
+function PrdsLayout({ children }: { children: React.ReactNode }) {
   return (
     <main className="mx-auto grid w-full max-w-6xl gap-6 px-4 py-10 sm:px-6 sm:py-14">
-      <div className="grid gap-1">
-        <h1 className="text-2xl font-semibold tracking-tight">PRDs</h1>
-        <p className="text-sm text-muted-foreground">
-          {summary ?? "The plans in this project's .prds folder."}
-        </p>
-      </div>
+      <h1 className="sr-only">PRDs</h1>
       {children}
     </main>
   );

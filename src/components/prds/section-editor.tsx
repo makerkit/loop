@@ -4,6 +4,7 @@ import { MarkdownEditor } from "#/components/editor/markdown-editor";
 import { Button } from "#/components/ui/button";
 import { Field, FieldError, FieldLabel } from "#/components/ui/field";
 import { Input } from "#/components/ui/input";
+import { NativeSelect, NativeSelectOption } from "#/components/ui/native-select";
 import {
   buildSectionValue,
   parseSectionErrors,
@@ -32,11 +33,39 @@ export function SectionEditor({
   latest: React.ReactNode;
   onDone: () => void;
 }) {
-  const { prd } = usePrdEdit();
-  const { submit, saving, conflict } = useSectionSave(edit.section);
+  const { filename, prd } = usePrdEdit();
+
+  return (
+    <SectionForm
+      edit={edit}
+      filename={filename}
+      revision={prd.metadata.revision ?? 0}
+      initialValues={readEditValues(edit, prd)}
+      latest={latest}
+      onDone={onDone}
+    />
+  );
+}
+
+export function SectionForm({
+  edit,
+  filename,
+  revision,
+  initialValues,
+  latest,
+  onDone,
+}: {
+  edit: SectionEdit;
+  filename: string;
+  revision: number;
+  initialValues: Record<string, string>;
+  latest: React.ReactNode;
+  onDone: () => void;
+}) {
+  const { submit, saving, conflict } = useSectionSave(edit.section, { filename, revision });
   const formId = useId();
 
-  const [values, setValues] = useState(() => readEditValues(edit, prd));
+  const [values, setValues] = useState(initialValues);
   const [errors, setErrors] = useState(NO_ERRORS);
 
   async function onSubmit(event: React.FormEvent) {
@@ -75,9 +104,25 @@ export function SectionEditor({
             >
               {field.label}
             </FieldLabel>
-            {field.kind === "line" ? (
+            {field.options ? (
+              <NativeSelect
+                id={id}
+                value={values[field.key] ?? ""}
+                aria-invalid={error ? true : undefined}
+                onChange={(event) => setValue(event.target.value)}
+              >
+                <NativeSelectOption value="">Unspecified</NativeSelectOption>
+                {field.options.map((option) => (
+                  <NativeSelectOption key={option} value={option}>
+                    {option[0]?.toUpperCase()}
+                    {option.slice(1)}
+                  </NativeSelectOption>
+                ))}
+              </NativeSelect>
+            ) : field.kind === "line" || field.kind === "number" ? (
               <Input
                 id={id}
+                inputMode={field.kind === "number" ? "numeric" : undefined}
                 value={values[field.key] ?? ""}
                 aria-invalid={error ? true : undefined}
                 onChange={(event) => setValue(event.target.value)}

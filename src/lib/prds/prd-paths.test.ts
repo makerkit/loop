@@ -27,6 +27,12 @@ describe("resolveImageSrc", () => {
     expect(resolveImageSrc("mockups/a.png", "notes.json")).toBe("/attachments/notes/mockups/a.png");
     expect(resolveImageSrc("./a.png", "notes.json")).toBe("/attachments/notes/a.png");
     expect(resolveImageSrc(".prds/notes/a.png", "notes.json")).toBe("/attachments/notes/a.png");
+    expect(resolveImageSrc("./docs/product/notes/a.png", "notes.json", "docs/product")).toBe(
+      "/attachments/notes/a.png",
+    );
+    expect(resolveImageSrc("/tmp/plans/notes/a.png", "notes.json", "/tmp/plans")).toBe(
+      "/attachments/notes/a.png",
+    );
     expect(resolveImageSrc("my%20mockup.png", "notes.json")).toBe(
       "/attachments/notes/my%20mockup.png",
     );

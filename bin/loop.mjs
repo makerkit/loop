@@ -6,7 +6,7 @@ import { execFile } from "node:child_process";
 import { randomBytes } from "node:crypto";
 import { existsSync, realpathSync } from "node:fs";
 import { createServer } from "node:net";
-import { dirname, join } from "node:path";
+import { dirname, join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
 import { HELP, choosePort, openCommand, parseArgs, projectNotes } from "./launcher.mjs";
@@ -72,6 +72,7 @@ Object.assign(process.env, {
   PORT: String(port),
   LOOP_PORT: String(port),
   LOOP_PROJECT_ROOT: projectRoot,
+  LOOP_PRDS_DIR: resolve(projectRoot, options.prdsDir ?? (process.env.LOOP_PRDS_DIR || ".prds")),
   // Read once by the server and then removed from the environment
   LOOP_SESSION_TOKEN: token,
   NODE_ENV: "production",
@@ -94,7 +95,7 @@ console.log(`\n  Makerkit Loop is running for ${projectRoot}\n`);
 console.log(`  Open: ${url}\n`);
 
 for (const note of projectNotes({
-  hasPrds: existsSync(join(projectRoot, ".prds")),
+  hasPrds: existsSync(process.env.LOOP_PRDS_DIR),
   hasPackageJson: existsSync(join(projectRoot, "package.json")),
   hasGit: existsSync(join(projectRoot, ".git")),
 })) {

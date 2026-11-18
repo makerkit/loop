@@ -47,7 +47,7 @@ export function attachmentUrl(filename: string, path: string) {
  * same path from the project root (`.prds/notes/mockups/a.png`). Anything
  * else (remote URLs, data: URLs, paths leaving the folder) returns null.
  */
-export function resolveImageSrc(src: string, filename: string) {
+export function resolveImageSrc(src: string, filename: string, prdsPath = ".prds") {
   let path = src.trim();
 
   try {
@@ -56,12 +56,18 @@ export function resolveImageSrc(src: string, filename: string) {
     return null;
   }
 
-  const projectPrefix = `.prds/${attachmentsFolderName(filename)}/`;
+  const explicitRelative = path.startsWith("./");
+  if (explicitRelative) path = path.slice(2);
 
-  if (path.startsWith(projectPrefix)) {
-    path = path.slice(projectPrefix.length);
-  } else if (path.startsWith("./")) {
-    path = path.slice(2);
+  for (const root of new Set([prdsPath, ".prds"])) {
+    if (root === "." && !explicitRelative) continue;
+
+    const prefix =
+      (root === "." ? "" : root.replace(/\/$/, "") + "/") + attachmentsFolderName(filename) + "/";
+    if (path.startsWith(prefix)) {
+      path = path.slice(prefix.length);
+      break;
+    }
   }
 
   if (/^[a-z][a-z0-9+.-]*:/i.test(path) || !isSafeRelativePath(path)) {

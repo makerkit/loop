@@ -2,7 +2,7 @@ import { createPrdService, type PrdService } from "@makerkit/prd";
 import { createNodePrdDeps } from "@makerkit/prd/node";
 import { realpathSync } from "node:fs";
 import { stat } from "node:fs/promises";
-import { basename, join, resolve } from "node:path";
+import { basename, isAbsolute, join, resolve } from "node:path";
 
 let projectRoot: string | undefined;
 let prdService: PrdService | undefined;
@@ -22,7 +22,14 @@ export function getProjectName() {
 }
 
 export function getPrdsDir() {
-  return join(getProjectRoot(), ".prds");
+  return getPrdService().prdsDir;
+}
+
+/** Git sees only project-relative directories. An external PRD stays outside commits. */
+export function getGitPrdsDir() {
+  const path = getPrdService().prdsPath;
+
+  return isAbsolute(path) ? null : path === "." ? "" : path;
 }
 
 export async function prdsDirExists() {
@@ -43,7 +50,9 @@ export async function prdFileExists(filename: string) {
 }
 
 export function getPrdService() {
-  prdService ??= createPrdService(createNodePrdDeps(getProjectRoot()));
+  prdService ??= createPrdService(
+    createNodePrdDeps(getProjectRoot(), { prdsDir: process.env.LOOP_PRDS_DIR }),
+  );
 
   return prdService;
 }

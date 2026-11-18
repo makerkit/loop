@@ -1,7 +1,8 @@
 import { watch } from "node:fs";
 import { stat } from "node:fs/promises";
+import { basename, dirname } from "node:path";
 
-import { getPrdsDir, getProjectRoot } from "#/lib/prds/project.server";
+import { getPrdsDir } from "#/lib/prds/project.server";
 
 import { createPrdsWatcher, type PrdsWatcher } from "./prds-watcher";
 
@@ -10,7 +11,7 @@ const globalForWatcher = globalThis as { __loopPrdsWatcher?: PrdsWatcher };
 /** The one .prds watcher for this Loop process (kept across dev reloads). Server only. */
 export function getPrdsWatcher() {
   globalForWatcher.__loopPrdsWatcher ??= createPrdsWatcher({
-    projectRoot: getProjectRoot(),
+    parent: (path) => ({ dir: dirname(path), name: basename(path) }),
     prdsDir: getPrdsDir(),
     exists: (path) =>
       stat(path).then(

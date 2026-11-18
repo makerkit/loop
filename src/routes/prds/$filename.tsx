@@ -44,7 +44,7 @@ export const Route = createFileRoute("/prds/$filename")({
 });
 
 function PrdDocumentPage() {
-  const { filename, prd, planCheck, next, missingAttachmentIds } = Route.useLoaderData();
+  const { filename, prdsPath, prd, planCheck, next, missingAttachmentIds } = Route.useLoaderData();
   const flags = getDocumentFlags(prd, planCheck);
 
   return (
@@ -70,7 +70,7 @@ function PrdDocumentPage() {
             </PrdEditProvider>
             <AskYourAgent filename={filename} step={nextStep(filename, prd, next, planCheck)} />
             <PlanCheckPanel check={planCheck} />
-            <PrdDocument filename={filename} prd={prd} flags={flags} />
+            <PrdDocument filename={filename} prdsPath={prdsPath} prd={prd} flags={flags} />
           </div>
         </div>
       </PrdPageLayout>

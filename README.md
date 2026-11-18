@@ -16,6 +16,8 @@ pnpx @makerkit/loop@latest
 
 Run it inside your project. Loop is free, MIT licensed and fully local: no account, no hosted service, and no AI of its own.
 
+Pass `--prds-dir docs/prds` to use a dedicated directory other than `.prds`. Relative paths are resolved from the project root, and absolute paths are also supported. Set the same directory on your agent's `makerkit-prd-mcp` command. Loop's Connect page shows the command for the selected directory. Git commits and project checks still use the project checkout. For development, set `LOOP_PRDS_DIR` before starting Vite.
+
 Loop is made by [Makerkit](https://makerkit.dev), the team behind the Makerkit SaaS starter kits. You don't need a kit to use it: Loop works in any project. Inside a kit it uses the kit's own MCP server.
 
 > **Status:** early. Loop and the packages it depends on (`@makerkit/prd`, `@makerkit/prd-mcp`) are not on npm yet. Until they are, run Loop from source (see [Development](#development)).
@@ -82,6 +84,7 @@ A PRD holds:
 - **The story log**: hand-off notes the agent writes when it finishes a story: `whatsNew` (what a person can now try), `technicalNotes` (for the next agent) and `deviations` (where the work departed from the plan, and why).
 - **Planning detail**: decisions, glossary terms, open questions (with options and a recommended answer), edge cases, risks, design guidance, security considerations, technical contracts, rollout and measurement plans. Parts that don't apply can be marked not applicable with a reason.
 - **Metadata**, including a `revision` number incremented on every save.
+- **Roadmap** (optional): edit the plan, group, section, order, and criticality in the document. The PRD list groups by plan, group, and section. Within a group, lower order comes first, then higher criticality. PRDs without an order follow those with one.
 
 Text fields may use Markdown. See [`types.ts`](https://github.com/makerkit/makerkit/blob/main/packages/prd/src/types.ts) for the full schema.
 

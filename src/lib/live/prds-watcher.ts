@@ -11,7 +11,7 @@ export interface WatchDeps {
   exists(path: string): Promise<boolean>;
   setTimeout(callback: () => void, ms: number): unknown;
   clearTimeout(handle: unknown): void;
-  projectRoot: string;
+  parent(path: string): { dir: string; name: string };
   prdsDir: string;
   /** How long to wait for a burst of changes to settle. */
   debounceMs?: number;
@@ -26,6 +26,7 @@ export function createPrdsWatcher(deps: WatchDeps) {
   let pending = new Set<string>();
   let timer: unknown = null;
   let starting = false;
+  let restartRequested = false;
 
   function flush() {
     timer = null;
@@ -53,29 +54,52 @@ export function createPrdsWatcher(deps: WatchDeps) {
     starting = true;
 
     try {
-      if (await deps.exists(deps.prdsDir)) {
-        stop = deps.watch(deps.prdsDir, (file) => changed(file), true);
-      } else {
-        // No .prds yet: watch the project folder until the agent creates it
-        stop = deps.watch(
-          deps.projectRoot,
-          (file) => {
-            if (file === ".prds") {
-              // Restart first: it drops pending changes, and this one must be sent
+      let target = deps.prdsDir;
+      let child: string | undefined;
+      let missingPath: string | undefined;
+
+      while (!(await deps.exists(target))) {
+        const { dir, name } = deps.parent(target);
+        if (dir === target) return;
+
+        child = name;
+        missingPath = target;
+        target = dir;
+      }
+
+      stop = deps.watch(
+        target,
+        (file) => {
+          if (child === undefined) {
+            changed(file);
+          } else if (file === child || file === null) {
+            if (starting) {
+              restartRequested = true;
+            } else {
               restart();
               changed(null);
             }
-          },
-          false,
-        );
+          }
+        },
+        child === undefined,
+      );
+
+      if (missingPath !== undefined && (await deps.exists(missingPath))) {
+        // The missing child appeared before the ancestor watch was registered.
+        restartRequested = true;
       }
     } finally {
       starting = false;
     }
 
-    // Everyone may have left while we were starting
+    const shouldRestart = restartRequested;
+    restartRequested = false;
+
     if (listeners.size === 0) {
       shutdown();
+    } else if (shouldRestart) {
+      restart();
+      changed(null);
     }
   }
 

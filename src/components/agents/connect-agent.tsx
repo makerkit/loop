@@ -5,7 +5,7 @@ import { useState } from "react";
 
 import { CopyInstruction } from "#/components/copy-instruction";
 import { Button } from "#/components/ui/button";
-import type { AgentStatus, ServerCommand } from "#/lib/agents/agents";
+import { shellLine, type AgentStatus, type ServerCommand } from "#/lib/agents/agents";
 import { applyAgentConfigFn, testAgentConnectionFn } from "#/lib/agents/agents.functions";
 import { cn } from "#/lib/utils";
 
@@ -20,9 +20,7 @@ export function ServerSummary({ server }: { server: ServerCommand }) {
           ? "This is a Makerkit kit: connect the kit's own MCP server. It includes the PRD tools."
           : "Connect the PRD MCP server (@makerkit/prd-mcp)."}
       </span>
-      <code className="font-mono text-xs text-muted-foreground">
-        {[server.command, ...server.args].join(" ")}
-      </code>
+      <code className="font-mono text-xs text-muted-foreground">{shellLine(server)}</code>
       {server.needsBuild ? (
         <span className="text-amber-800 dark:text-amber-300">
           The kit's server is not built yet. Build it first:{" "}

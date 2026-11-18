@@ -43,6 +43,11 @@ export const DOCUMENT_SECTIONS = [
       ),
   },
   {
+    id: "roadmap",
+    title: "Roadmap",
+    isEmpty: (p: StructuredPRD) => !p.roadmap || Object.keys(p.roadmap).length === 0,
+  },
+  {
     id: "scope",
     title: "Scope",
     isEmpty: (p: StructuredPRD) => blank(p.nonGoals, p.outOfScope, p.assumptions),

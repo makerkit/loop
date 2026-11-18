@@ -17,7 +17,7 @@ export type NextStep =
   | { kind: "done" };
 
 export const START_INSTRUCTION =
-  "Use the shape_prd prompt to plan a new feature with me and save it as a PRD in .prds";
+  "Use the shape_prd prompt to plan a new feature with me and save it in the configured PRD directory";
 
 export function nextStep(
   filename: string,

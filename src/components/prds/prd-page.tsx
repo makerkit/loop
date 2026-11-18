@@ -143,7 +143,7 @@ export function PrdPageNotFound() {
           <CircleAlertIcon />
           <AlertTitle>PRD not found</AlertTitle>
           <AlertDescription>
-            There is no PRD with this file name in .prds.{" "}
+            There is no PRD with this file name in the configured directory.{" "}
             <Link to="/" className="font-medium text-foreground underline underline-offset-4">
               See all PRDs
             </Link>

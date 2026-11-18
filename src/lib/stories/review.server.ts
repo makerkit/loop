@@ -4,7 +4,7 @@ import { access } from "node:fs/promises";
 import { createGit } from "#/lib/git/git";
 import { runCommand } from "#/lib/git/run-command.server";
 import { sanitizeOutput } from "#/lib/git/sanitize";
-import { getPrdService, getProjectRoot } from "#/lib/prds/project.server";
+import { getGitPrdsDir, getPrdService, getProjectRoot } from "#/lib/prds/project.server";
 
 import { createReviewService } from "./review";
 
@@ -27,6 +27,7 @@ export function getReviewService() {
 
   return createReviewService({
     prd: getPrdService(),
+    prdGitDir: getGitPrdsDir(),
     git: getGitForProject(),
     root,
     today: () => new Date().toISOString().slice(0, 10),

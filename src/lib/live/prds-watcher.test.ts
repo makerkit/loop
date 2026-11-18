@@ -1,16 +1,17 @@
+import { basename, dirname } from "node:path";
 import { describe, expect, it } from "vitest";
 
 import { createPrdsWatcher } from "./prds-watcher";
 
-function setup({ prdsExists = true } = {}) {
+function setup({ prdsExists = true, prdsDir = "/project/.prds" } = {}) {
   const watchers: Array<{ dir: string; emit: (file: string | null) => void; closed: boolean }> = [];
   const timers: Array<{ callback: () => void; cleared: boolean }> = [];
-  let exists = prdsExists;
+  const directories = new Set(["/project", ...(prdsExists ? [prdsDir] : [])]);
 
   const watcher = createPrdsWatcher({
-    projectRoot: "/project",
-    prdsDir: "/project/.prds",
-    exists: async () => exists,
+    parent: (path) => ({ dir: dirname(path), name: basename(path) }),
+    prdsDir,
+    exists: async (path) => directories.has(path),
     watch: (dir, onChange) => {
       const entry = { dir, emit: onChange, closed: false };
       watchers.push(entry);
@@ -42,9 +43,8 @@ function setup({ prdsExists = true } = {}) {
     watchers,
     tick,
     runTimers,
-    createPrds: () => {
-      exists = true;
-    },
+    createPrds: () => directories.add(prdsDir),
+    createDirectory: (path: string) => directories.add(path),
   };
 }
 
@@ -105,6 +105,27 @@ describe("createPrdsWatcher", () => {
     expect(received).toEqual([[""]]);
     expect(watchers[0]!.closed).toBe(true);
     expect(watchers[1]!.dir).toBe("/project/.prds");
+  });
+
+  it("follows a custom directory as its parents are created", async () => {
+    const { watcher, watchers, tick, createDirectory, createPrds } = setup({
+      prdsExists: false,
+      prdsDir: "/project/docs/prds",
+    });
+    watcher.subscribe(() => undefined);
+    await tick();
+
+    expect(watchers.at(-1)?.dir).toBe("/project");
+    createDirectory("/project/docs");
+    watchers.at(-1)?.emit("docs");
+    await tick();
+
+    expect(watchers.at(-1)?.dir).toBe("/project/docs");
+    createPrds();
+    watchers.at(-1)?.emit("prds");
+    await tick();
+
+    expect(watchers.at(-1)?.dir).toBe("/project/docs/prds");
   });
 
   it("does not keep watching when the last listener left during start-up", async () => {

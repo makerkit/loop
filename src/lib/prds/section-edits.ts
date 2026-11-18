@@ -1,4 +1,4 @@
-import type { PrdSection, StructuredPRD } from "@makerkit/prd";
+import type { PrdRoadmap, PrdSection, StructuredPRD } from "@makerkit/prd";
 
 /**
  * What can be edited in the document view. Each edit maps to exactly one
@@ -9,8 +9,9 @@ import type { PrdSection, StructuredPRD } from "@makerkit/prd";
 export interface EditField {
   key: string;
   label: string;
-  /** `line`: one line of text; `text`: Markdown; `list`: one item per line. */
-  kind: "line" | "text" | "list";
+  /** A text line, Markdown, a list of items, or a numeric value. */
+  kind: "line" | "text" | "list" | "number";
+  options?: readonly string[];
   /** Shown in an empty field, e.g. "Add an open question". */
   placeholder?: string;
 }
@@ -38,6 +39,23 @@ const LIST_SECTIONS = new Set<PrdSection>([
 ]);
 
 export const SECTION_EDITS = {
+  roadmap: {
+    section: "roadmap",
+    fields: [
+      { key: "plan", label: "Plan", kind: "line" },
+      { key: "group", label: "Group", kind: "line" },
+      { key: "section", label: "Section", kind: "line" },
+      { key: "order", label: "Order", kind: "number" },
+      {
+        key: "criticality",
+        label: "Criticality",
+        kind: "line",
+        options: ["critical", "high", "medium", "low"] satisfies NonNullable<
+          PrdRoadmap["criticality"]
+        >[],
+      },
+    ] satisfies (EditField & { key: keyof PrdRoadmap })[],
+  },
   overview: {
     section: "introduction",
     fields: [{ key: "title", label: "Title", kind: "line" }, text("overview", "Overview")],
@@ -128,8 +146,10 @@ export const EDITABLE_SECTIONS = [
 
 /** The form values for an edit, from the PRD as loaded. */
 export function readEditValues(edit: SectionEdit, prd: StructuredPRD): Record<string, string> {
-  const current = prd[edit.section] as unknown;
+  return readSectionFields(edit, edit.section === "roadmap" ? prd.roadmap : prd[edit.section]);
+}
 
+export function readSectionFields(edit: SectionEdit, current: unknown): Record<string, string> {
   return Object.fromEntries(
     edit.fields.map((field) => {
       const value = LIST_SECTIONS.has(edit.section)
@@ -140,7 +160,10 @@ export function readEditValues(edit: SectionEdit, prd: StructuredPRD): Record<st
         return [field.key, Array.isArray(value) ? value.join("\n") : ""];
       }
 
-      return [field.key, typeof value === "string" ? value : ""];
+      return [
+        field.key,
+        typeof value === "string" || typeof value === "number" ? String(value) : "",
+      ];
     }),
   );
 }
@@ -155,6 +178,12 @@ export function buildSectionValue(edit: SectionEdit, values: Record<string, stri
 
     if (field.kind === "list") {
       return [field.key, toListItems(raw)] as const;
+    }
+
+    if (edit.section === "roadmap") {
+      const trimmed = raw.trim();
+      const value = field.kind === "number" && /^\d+$/.test(trimmed) ? Number(trimmed) : trimmed;
+      return [field.key, trimmed === "" ? null : value] as const;
     }
 
     return [field.key, field.kind === "line" ? raw.trim() : raw] as const;

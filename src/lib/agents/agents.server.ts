@@ -3,9 +3,9 @@ import { access, readFile, writeFile } from "node:fs/promises";
 import { delimiter, join } from "node:path";
 
 import { sanitizeOutput } from "#/lib/git/sanitize";
-import { getProjectRoot } from "#/lib/prds/project.server";
+import { getPrdsDir, getProjectRoot } from "#/lib/prds/project.server";
 
-import { applyConfig, chooseServer, detectAgents } from "./agents";
+import { applyConfig, chooseServer, detectAgents, matchesPrdServer } from "./agents";
 import { configuredServer, probeServer } from "./probe";
 import { spawnInProject } from "./probe.server";
 
@@ -39,8 +39,17 @@ async function isOnPath(binary: string) {
   return false;
 }
 
+function chooseProjectServer() {
+  const root = getProjectRoot();
+  const prdsDir = getPrdsDir();
+  return chooseServer(
+    { readProjectFile },
+    prdsDir === join(root, ".prds") ? undefined : { root, prdsDir },
+  );
+}
+
 export async function getAgentSetup() {
-  const server = await chooseServer({ readProjectFile });
+  const server = await chooseProjectServer();
   const agents = await detectAgents({ readProjectFile, isOnPath }, server);
   const configured = configuredServer(
     await readProjectFile(CONFIG_FILES.claude),
@@ -52,7 +61,7 @@ export async function getAgentSetup() {
 
 /** Adds the PRD server to the agent's project config file, keeping everything else in it. */
 export async function applyAgentConfig(agent: keyof typeof CONFIG_FILES) {
-  const server = await chooseServer({ readProjectFile });
+  const server = await chooseProjectServer();
   const file = CONFIG_FILES[agent];
 
   if (agent === "opencode" && (await readProjectFile("opencode.jsonc")) !== null) {
@@ -69,7 +78,10 @@ export async function applyAgentConfig(agent: keyof typeof CONFIG_FILES) {
 /** Starts the configured (or recommended) server and lists its tools. */
 export async function testAgentConnection() {
   const { server, configured } = await getAgentSetup();
-  const target = configured ?? server;
+  const target =
+    configured && matchesPrdServer(configured.command, configured.args, server)
+      ? configured
+      : server;
 
   const root = getProjectRoot();
   const result = await probeServer(spawnInProject(root), target);
